@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תזרים מזומנים · אטלס הנדסה וניהול פרויקטים</title>
+<style>
+  :root{
+    --ink:#1c2b2a; --paper:#eef2f0; --paper-2:#ffffff; --line:#d6ddd9;
+    --income:#1f6f5c; --income-bg:#e4f0ec;
+    --expense:#9a3324; --expense-bg:#f6e6e2;
+    --accent:#3d6b5c; --muted:#5f6f6a; --warn:#b3541e;
+    --radius:6px;
+    --c-salary:#8a7a4e; --c-pension:#5b7a99; --c-credit:#7a5b8a;
+    --c-statutory:#2f5f8a; --c-cgross:#9a4a44; --c-cprofit:#c98a3a; --c-cpayout:#9a4a44;
+    --c-income:#2f7a5a; --c-other:#6b6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Segoe UI","Arial Hebrew",Arial,sans-serif;background:var(--paper);color:var(--ink);font-size:13.5px;line-height:1.5;}
+  header.top{background:var(--paper-2);border-bottom:2px solid var(--ink);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  header.top h1{font-size:19px;margin:0;font-weight:700;}
+  header.top .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .fileControls{display:flex;gap:8px;align-items:center;}
+  button{font-family:inherit;font-size:13px;border:1px solid var(--ink);background:var(--paper-2);color:var(--ink);border-radius:var(--radius);padding:6px 13px;cursor:pointer;}
+  button.primary{background:var(--ink);color:#fff;}
+  button.small{padding:4px 9px;font-size:12px;}
+  button:hover{opacity:.85;}
+  #fileInput{display:none;}
+  label.fileBtn{font-size:13px;border:1px solid var(--ink);background:var(--paper-2);border-radius:var(--radius);padding:6px 13px;cursor:pointer;}
+
+  nav.months{display:flex;gap:6px;padding:12px 24px 0 24px;flex-wrap:wrap;align-items:center;}
+  nav.months button.month{border:1px solid var(--line);background:var(--paper-2);padding:6px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;}
+  nav.months button.month.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  nav.months button.addMonth{border-radius:999px;border:1px dashed var(--muted);color:var(--muted);background:transparent;}
+
+  main{padding:18px 24px 60px 24px;max-width:1600px;margin:0 auto;}
+
+  section.dashboard{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;}
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;}
+  .card .label{font-size:11.5px;color:var(--muted);margin-bottom:5px;}
+  .card .value{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .card.income .value{color:var(--income);}
+  .card.expense .value{color:var(--expense);}
+  .card.net .value{color:var(--ink);}
+  .card.commission .value{color:var(--warn);}
+  .card.balance .value{color:var(--accent);}
+
+  .breakdowns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+  .breakdown-box{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;}
+  .breakdown-box h3{margin:0 0 8px 0;font-size:12.5px;color:var(--muted);font-weight:600;}
+  .breakdown-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--paper);font-size:12.5px;}
+  .breakdown-row:last-child{border-bottom:none;}
+  .breakdown-row .amt{font-variant-numeric:tabular-nums;font-weight:600;}
+
+  .quickAdd{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .quickAdd button{background:var(--paper-2);}
+
+  .ledgerWrap{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1500px;}
+  th{text-align:right;font-size:11px;color:var(--muted);font-weight:600;padding:11px 8px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:#f7f9f8;z-index:3;}
+  td{padding:9px 7px;border-bottom:1px solid var(--paper);vertical-align:middle;}
+  tr{line-height:1.7;}
+  th.balCol, td.balCol{position:sticky;left:0;z-index:2;background:var(--paper-2);box-shadow:2px 0 5px rgba(0,0,0,.08);}
+  th.balCol{z-index:4;background:#f7f9f8;}
+  tr.cat-salary td:first-child{border-right:3px solid var(--c-salary);}
+  tr.cat-pension td:first-child{border-right:3px solid var(--c-pension);}
+  tr.cat-credit td:first-child{border-right:3px solid var(--c-credit);}
+  tr.cat-statutory td:first-child{border-right:3px solid var(--c-statutory);}
+  tr.cat-contractorGross td:first-child{border-right:3px solid var(--c-cgross);}
+  tr.cat-contractorProfit td:first-child{border-right:3px solid var(--c-cprofit);}
+  tr.cat-contractorPayout td:first-child{border-right:3px solid var(--c-cpayout);}
+  tr.cat-projectIncome td:first-child{border-right:3px solid var(--c-income);}
+  tr.cat-other td:first-child{border-right:3px solid var(--c-other);}
+  tr.cat-contractorProfit{opacity:.75;}
+  td input, td select{width:100%;min-width:70px;border:1px solid transparent;background:transparent;font-family:inherit;font-size:12.5px;padding:3px 4px;border-radius:4px;color:var(--ink);}
+  td input:hover, td select:hover{border-color:var(--line);}
+  td input:focus, td select:focus{border-color:var(--ink);outline:none;background:#fff;}
+  td input[type="number"]{font-variant-numeric:tabular-nums;text-align:left;direction:ltr;min-width:80px;}
+  td input[type="date"]{font-variant-numeric:tabular-nums;min-width:110px;}
+  td input[type="checkbox"]{width:auto;min-width:auto;}
+  .docCell{display:flex;flex-direction:column;gap:1px;}
+  .docCell input{font-size:11px;padding:2px 3px;}
+  .rowActions{text-align:center;}
+  .delRow{border:none;background:none;color:var(--expense);font-size:14px;cursor:pointer;padding:1px 5px;}
+  .balCell{font-variant-numeric:tabular-nums;font-weight:700;text-align:left;direction:ltr;color:var(--ink);}
+  .balCell.noimpact{color:var(--muted);font-weight:400;font-style:italic;}
+  .profitCell{font-variant-numeric:tabular-nums;color:var(--warn);text-align:left;direction:ltr;}
+  .empty-hint{padding:16px 18px;color:var(--muted);}
+  footer.appFooter{max-width:1600px;margin:0 auto;padding:0 24px 40px 24px;color:var(--muted);font-size:11.5px;}
+  .catLabel{font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>תזרים מזומנים · ב.ד. אטלס הנדסה וניהול פרויקטים</h1>
+    <div class="sub" id="subHeader">נתונים נטענים...</div>
+  </div>
+  <div class="fileControls">
+    <label class="fileBtn">טען קובץ JSON<input type="file" id="fileInput" accept="application/json"></label>
+    <button class="primary" id="saveBtn">שמור JSON</button>
+    <button class="ghost" id="githubToggle">GitHub ▾</button>
+  </div>
+</header>
+
+<div id="githubPanel" style="display:none;background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;">
+  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;max-width:1000px;">
+    <div><label style="font-size:11px;color:var(--muted);display:block;">משתמש/ארגון</label>
+      <input type="text" id="ghOwner" placeholder="denis" style="padding:6px;border:1px solid var(--line);border-radius:4px;"></div>
+    <div><label style="font-size:11px;color:var(--muted);display:block;">שם המאגר (Repo)</label>
+      <input type="text" id="ghRepo" placeholder="atlas-cashflow-data" style="padding:6px;border:1px solid var(--line);border-radius:4px;"></div>
+    <div><label style="font-size:11px;color:var(--muted);display:block;">נתיב קובץ</label>
+      <input type="text" id="ghPath" placeholder="data.json" value="data.json" style="padding:6px;border:1px solid var(--line);border-radius:4px;width:110px;"></div>
+    <div><label style="font-size:11px;color:var(--muted);display:block;">Branch</label>
+      <input type="text" id="ghBranch" placeholder="main" value="main" style="padding:6px;border:1px solid var(--line);border-radius:4px;width:80px;"></div>
+    <div><label style="font-size:11px;color:var(--muted);display:block;">Personal Access Token</label>
+      <input type="password" id="ghToken" placeholder="ghp_..." style="padding:6px;border:1px solid var(--line);border-radius:4px;width:220px;"></div>
+    <button class="small" id="ghLoadBtn">טען מ-GitHub</button>
+    <button class="small primary" id="ghSaveBtn">שמור ל-GitHub</button>
+  </div>
+  <div id="ghStatus" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
+  <div style="font-size:11.5px;color:var(--muted);margin-top:6px;max-width:800px;">
+    הטוקן נשמר רק בזיכרון הדפדפן שלך בזמן שהדף פתוח — הוא לא נשמר בקובץ ה-JSON ולא נשלח לשום מקום חוץ מ-GitHub. אחרי רענון הדף תצטרך להזין אותו מחדש.
+  </div>
+</div>
+
+<nav class="months" id="monthNav"></nav>
+
+<main>
+<datalist id="empList"></datalist>
+  <section class="dashboard" id="dashboard"></section>
+  <div class="breakdowns" id="breakdowns"></div>
+
+  <div class="quickAdd" id="quickAdd"></div>
+
+  <div class="ledgerWrap">
+    <table>
+      <thead>
+        <tr>
+          <th>סוג</th>
+          <th>גוף</th>
+          <th>פרויקט</th>
+          <th>אחראי</th>
+          <th>הוגש</th>
+          <th>צפי תשלום</th>
+          <th>הכנסות</th>
+          <th>הוצאות</th>
+          <th>עמלה (תיעוד)</th>
+          <th>מסמכים</th>
+          <th>שולם/התקבל</th>
+          <th>הערות</th>
+          <th></th>
+          <th class="balCol">עו"ש</th>
+        </tr>
+      </thead>
+      <tbody id="ledgerBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer class="appFooter">גרסה 2 · יומן רציף עם עו"ש מתגלגל · כל הנתונים נשמרים מקומית בקובץ JSON שאתה מוריד/טוען — שום דבר לא נשלח לשרת.</footer>
+
+<script>
+/* ============ SEED DATA ============ */
+function seedData(){
+  return {
+    openingBalance: 434874,
+    employees: {
+      denis:{name:"דניס"}, beri:{name:"ברי"}, ludmila:{name:"לודמילה"},
+      adi:{name:"עדי"}, shaili:{name:"שי לי"}, dana:{name:"דנה"}, ofir:{name:"אופיר"}
+    },
+    contractors: {
+      erez:{name:"ארז",paymentTermsDays:45,commissionPercent:12},
+      marit:{name:"מרית",paymentTermsDays:45,commissionPercent:15},
+      emil:{name:"אמיל",paymentTermsDays:45,commissionPercent:10},
+      dima:{name:"דימה",paymentTermsDays:45,commissionPercent:15},
+      noam:{name:"נועם",paymentTermsDays:45,commissionPercent:15},
+      yarden:{name:"ירדן",paymentTermsDays:45,commissionPercent:12},
+      rafael:{name:"רפאל",paymentTermsDays:45,commissionPercent:15}
+    },
+    clients: {
+      mod:{name:"משרד הביטחון", branches:{
+        south:"ענף דרום", north:"ענף צפון", seam:"קו התפר", planning:"תו\"ב",
+        b561:"561", b562:"562", b563:"563", b564:"564", comms:"ענף תקשוב", negev:"אט\"ל לנגב"
+      }}
+    },
+    statutoryCodes: { "2761":"מע\"מ", "2760":"מס הכנסה", "2762":"ניכויים מס הכנסה", "38286":"ביטוח לאומי" },
+    knownMonths: ["2026-09"],
+    ledger: []
+  };
+}
+
+let data = seedData();
+let activeMonth = 'ALL';
+
+const CAT_LABELS = {
+  salary:"משכורת", pension:"פנסיה", credit:"אשראי/בנק", statutory:"סטטוטורי",
+  contractorGross:"קבלן - הכנסה מלאה", contractorProfit:"קבלן - עמלה (תיעוד)",
+  contractorPayout:"קבלן - תשלום לקבלן", projectIncome:"הכנסת פרויקט", other:"אחר"
+};
+
+/* ============ HELPERS ============ */
+const HEB_MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+function monthLabel(m){
+  if(!m || m==='ALL') return "כל התקופה";
+  const [y,mo] = m.split("-").map(Number);
+  return HEB_MONTHS[mo-1]+" "+y;
+}
+function fmtMoney(n){
+  n = Number(n)||0;
+  return n.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2})+" ₪";
+}
+function addDays(dateStr, days){
+  if(!dateStr) return "";
+  const d = new Date(dateStr+"T00:00:00");
+  d.setDate(d.getDate()+Number(days||0));
+  return d.toISOString().slice(0,10);
+}
+function uid(p){ return p+"_"+Math.random().toString(36).slice(2,9); }
+function rowMonth(row){
+  const d = row.expectedDate || row.submittedDate || (row.forMonth ? row.forMonth+"-01" : "");
+  return d ? d.slice(0,7) : "";
+}
+function rowSortKey(row){
+  return row.expectedDate || (row.forMonth ? row.forMonth+"-01" : "") || row.submittedDate || "0000-00-00";
+}
+function allMonths(){
+  const set = new Set(data.knownMonths||[]);
+  (data.ledger||[]).forEach(r=>{ const m = rowMonth(r); if(m) set.add(m); });
+  return Array.from(set).sort();
+}
+
+/* ============ CONTRACTOR CLUSTER LOGIC ============ */
+function recalcContractorCluster(clusterId){
+  const rows = data.ledger.filter(r=>r.clusterId===clusterId);
+  const gross = rows.find(r=>r.category==='contractorGross');
+  const profit = rows.find(r=>r.category==='contractorProfit');
+  const payout = rows.find(r=>r.category==='contractorPayout');
+  if(!gross) return;
+  const c = data.contractors[gross._contractorId];
+  if(!c) return;
+  if(gross.submittedDate) gross.expectedDate = addDays(gross.submittedDate, c.paymentTermsDays);
+  const full = Number(gross.income)||0;
+  const commission = Math.round(full*(Number(c.commissionPercent)||0)/100*100)/100;
+  const payoutAmt = Math.round((full-commission)*100)/100;
+  if(profit){
+    profit.profitAmount = commission;
+    profit.expectedDate = gross.expectedDate;
+    profit.submittedDate = gross.submittedDate;
+    profit.entity = c.name+" - אטלס";
+    profit.project = gross.project;
+    profit.responsible = gross.responsible;
+  }
+  if(payout){
+    payout.expense = payoutAmt;
+    payout.expectedDate = gross.expectedDate;
+    payout.submittedDate = gross.submittedDate;
+    payout.entity = "אטלס - "+c.name;
+    payout.project = gross.project;
+    payout.responsible = gross.responsible;
+  }
+}
+function recalcAllClusters(){
+  const clusterIds = new Set((data.ledger||[]).map(r=>r.clusterId).filter(Boolean));
+  clusterIds.forEach(recalcContractorCluster);
+}
+
+/* ============ RUNNING BALANCE ============ */
+function computeBalances(){
+  const sorted = data.ledger.slice().sort((a,b)=> rowSortKey(a).localeCompare(rowSortKey(b)));
+  let bal = Number(data.openingBalance)||0;
+  sorted.forEach(r=>{
+    if(r.affectsBalance!==false){
+      bal += (Number(r.income)||0) - (Number(r.expense)||0);
+    }
+    r._runningBalance = bal;
+  });
+  return sorted;
+}
+
+/* ============ QUICK ADD ============ */
+function quickAddSalary(){
+  data.ledger.push({ id:uid('l'), category:'salary', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  renderAll();
+}
+function quickAddPension(){
+  data.ledger.push({ id:uid('l'), category:'pension', entity:'', project:'קרן פנסיה', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  renderAll();
+}
+function quickAddCredit(){
+  data.ledger.push({ id:uid('l'), category:'credit', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  renderAll();
+}
+function quickAddStatutory(){
+  data.ledger.push({ id:uid('l'), category:'statutory', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'', _statutoryCode:'' });
+  renderAll();
+}
+function quickAddProjectIncome(){
+  data.ledger.push({ id:uid('l'), category:'projectIncome', entity:'', project:'', responsible:'', clientId:'', branchId:'', invoiceNumber:'', submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, receiptIssued:false, docNumbers:{}, notes:'' });
+  renderAll();
+}
+function quickAddContractor(){
+  const clusterId = uid('cl');
+  const base = { clusterId, submittedDate:'', expectedDate:'', forMonth:'', project:'', responsible:'', notes:'', docNumbers:{} };
+  data.ledger.push(Object.assign({id:uid('l'),category:'contractorGross', entity:'', income:0, expense:0, affectsBalance:true, _contractorId:''}, base));
+  data.ledger.push(Object.assign({id:uid('l'),category:'contractorProfit', entity:'', income:0, expense:0, affectsBalance:false, profitAmount:0}, base));
+  data.ledger.push(Object.assign({id:uid('l'),category:'contractorPayout', entity:'', income:0, expense:0, affectsBalance:true}, base));
+  renderAll();
+}
+function quickAddOther(){
+  data.ledger.push({ id:uid('l'), category:'other', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  renderAll();
+}
+
+function renderQuickAdd(){
+  document.getElementById('quickAdd').innerHTML = `
+    <button class="small" onclick="quickAddSalary()">+ משכורת</button>
+    <button class="small" onclick="quickAddPension()">+ פנסיה</button>
+    <button class="small" onclick="quickAddCredit()">+ אשראי/בנק</button>
+    <button class="small" onclick="quickAddStatutory()">+ סטטוטורי</button>
+    <button class="small" onclick="quickAddContractor()">+ חשבון קבלן (3 שורות)</button>
+    <button class="small" onclick="quickAddProjectIncome()">+ הכנסת פרויקט</button>
+    <button class="small" onclick="quickAddOther()">+ שורה חופשית</button>
+  `;
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(sortedAll){
+  const m = activeMonth;
+  const rowsInMonth = sortedAll.filter(r=> m==='ALL' ? true : rowMonth(r)===m);
+  let income=0, expense=0, commission=0;
+  rowsInMonth.forEach(r=>{
+    income += Number(r.income)||0;
+    expense += Number(r.expense)||0;
+    if(r.category==='contractorProfit') commission += Number(r.profitAmount)||0;
+  });
+  const net = income-expense;
+  const lastBal = rowsInMonth.length ? rowsInMonth[rowsInMonth.length-1]._runningBalance : (Number(data.openingBalance)||0);
+
+  document.getElementById('dashboard').innerHTML = `
+    <div class="card income"><div class="label">הכנסות (${monthLabel(m)})</div><div class="value">${fmtMoney(income)}</div></div>
+    <div class="card expense"><div class="label">הוצאות ותשלומים</div><div class="value">${fmtMoney(expense)}</div></div>
+    <div class="card net"><div class="label">נטו לתקופה</div><div class="value">${fmtMoney(net)}</div></div>
+    <div class="card commission"><div class="label">רווח עמלות קבלנים</div><div class="value">${fmtMoney(commission)}</div></div>
+    <div class="card balance"><div class="label">יתרת עו"ש (סוף תקופה)</div><div class="value">${fmtMoney(lastBal)}</div></div>
+  `;
+
+  const byClient={}, byResp={};
+  rowsInMonth.filter(r=>r.category==='projectIncome').forEach(r=>{
+    const cName = (data.clients[r.clientId]||{}).name || r.entity || 'ללא לקוח';
+    byClient[cName] = (byClient[cName]||0) + (Number(r.income)||0);
+  });
+  rowsInMonth.forEach(r=>{
+    if(!r.responsible) return;
+    byResp[r.responsible] = (byResp[r.responsible]||0) + (Number(r.income)||0);
+  });
+  function rows(obj){
+    const e = Object.entries(obj).filter(([k,v])=>v).sort((a,b)=>b[1]-a[1]);
+    if(!e.length) return '<div class="empty-hint">אין נתונים לתקופה זו</div>';
+    return e.map(([k,v])=>`<div class="breakdown-row"><span>${k}</span><span class="amt">${fmtMoney(v)}</span></div>`).join('');
+  }
+  document.getElementById('breakdowns').innerHTML = `
+    <div class="breakdown-box"><h3>הכנסות לפי לקוח</h3>${rows(byClient)}</div>
+    <div class="breakdown-box"><h3>הכנסות לפי אחראי</h3>${rows(byResp)}</div>
+  `;
+}
+
+/* ============ MONTH NAV ============ */
+function renderMonthNav(){
+  const months = allMonths();
+  const nav = document.getElementById('monthNav');
+  nav.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'month'+(activeMonth==='ALL'?' active':'');
+  allBtn.textContent = 'כל התקופה';
+  allBtn.onclick = ()=>{ activeMonth='ALL'; renderAll(); };
+  nav.appendChild(allBtn);
+  months.forEach(m=>{
+    const b = document.createElement('button');
+    b.className = 'month'+(m===activeMonth?' active':'');
+    b.textContent = monthLabel(m);
+    b.onclick = ()=>{ activeMonth = m; renderAll(); };
+    nav.appendChild(b);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'month addMonth';
+  addBtn.textContent = '+ הוסף חודש';
+  addBtn.onclick = ()=>{
+    const val = prompt('הוסף חודש בפורמט YYYY-MM (למשל 2026-10):');
+    if(val && /^\d{4}-\d{2}$/.test(val)){
+      if(!data.knownMonths.includes(val)) data.knownMonths.push(val);
+      activeMonth = val; renderAll();
+    } else if(val){ alert('פורמט לא תקין. נדרש YYYY-MM'); }
+  };
+  nav.appendChild(addBtn);
+}
+
+/* ============ LEDGER TABLE ============ */
+function inp(row, field, type, extra){
+  extra = extra || '';
+  const val = row[field];
+  if(type==='checkbox') return `<input type="checkbox" data-id="${row.id}" data-field="${field}" ${val?'checked':''}>`;
+  return `<input type="${type}" data-id="${row.id}" data-field="${field}" value="${val!==undefined&&val!==null?val:''}" ${extra}>`;
+}
+function moneyInp(row, field){
+  const num = Number(row[field])||0;
+  const formatted = num.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `<input type="text" inputmode="decimal" data-id="${row.id}" data-field="${field}" data-money="1" value="${formatted}" style="text-align:left;direction:ltr;">`;
+}
+function docInp(row, key, ph){
+  const val = (row.docNumbers && row.docNumbers[key]) || '';
+  return `<input type="text" placeholder="${ph}" data-id="${row.id}" data-doc="${key}" value="${val}">`;
+}
+function catSelect(row){
+  let opts = '';
+  for(const k in CAT_LABELS){ opts += `<option value="${k}" ${row.category===k?'selected':''}>${CAT_LABELS[k]}</option>`; }
+  const disabled = row.clusterId ? 'disabled title="חלק ממקבץ קבלן - לא ניתן לשנות סוג"' : '';
+  return `<select data-id="${row.id}" data-field="category" ${disabled}>${opts}</select>`;
+}
+
+function renderLedger(){
+  const sortedAll = computeBalances();
+  renderDashboard(sortedAll);
+  const display = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
+  const body = document.getElementById('ledgerBody');
+  if(!display.length){
+    body.innerHTML = '<tr><td colspan="14" class="empty-hint">אין רשומות להצגה. הוסף שורה למעלה.</td></tr>';
+    return;
+  }
+  body.innerHTML = display.map(r=>{
+    const balDisplay = r.affectsBalance===false
+      ? `<span class="balCell noimpact">${fmtMoney(r._runningBalance)}</span>`
+      : `<span class="balCell">${fmtMoney(r._runningBalance)}</span>`;
+    let extraCol = '';
+    if(r.category==='contractorGross'){
+      extraCol = `<select data-id="${r.id}" data-field="_contractorId">${optionsHtmlLocal(data.contractors, r._contractorId)}</select>`;
+    } else if(r.category==='projectIncome'){
+      const client = data.clients[r.clientId];
+      const branchOpts = client ? Object.fromEntries(Object.entries(client.branches).map(([k,v])=>[k,{name:v}])) : {};
+      extraCol = `<select data-id="${r.id}" data-field="clientId">${optionsHtmlLocal(data.clients, r.clientId)}</select>
+                  <select data-id="${r.id}" data-field="branchId">${optionsHtmlLocal(branchOpts, r.branchId)}</select>`;
+    } else if(r.category==='statutory'){
+      const codeOpts = Object.fromEntries(Object.entries(data.statutoryCodes).map(([k,v])=>[k,{name:v+' ('+k+')'}]));
+      extraCol = `<select data-id="${r.id}" data-field="_statutoryCode">${optionsHtmlLocal(codeOpts, r._statutoryCode)}</select>`;
+    }
+    const profitCell = r.category==='contractorProfit'
+      ? `<span class="profitCell">${fmtMoney(r.profitAmount)}</span>`
+      : '';
+    const incomeCell = r.category==='contractorProfit' ? '' : moneyInp(r,'income');
+    const expenseCell = (r.category==='contractorProfit'||r.category==='contractorPayout') ? (r.category==='contractorPayout' ? `<span class="computed">${fmtMoney(r.expense)}</span>` : '') : moneyInp(r,'expense');
+    const paidField = (r.category==='projectIncome')
+      ? `<select data-id="${r.id}" data-field="paid2"><option value="expected" ${!r.paid?'selected':''}>צפוי</option><option value="received" ${r.paid?'selected':''}>התקבל</option></select>`
+      : inp(r,'paid','checkbox');
+    const entityCell = (r.category==='salary'||r.category==='pension') ? employeeSelect(r) : inp(r,'entity','text');
+    return `
+    <tr class="cat-${r.category}">
+      <td>${catSelect(r)}${extraCol?'<div style="margin-top:2px">'+extraCol+'</div>':''}</td>
+      <td>${entityCell}</td>
+      <td>${inp(r,'project','text')}</td>
+      <td>${inp(r,'responsible','text',`list="empList"`)}</td>
+      <td>${inp(r,'submittedDate','date')}</td>
+      <td>${inp(r,'expectedDate','date')}</td>
+      <td>${incomeCell}</td>
+      <td>${expenseCell}</td>
+      <td>${profitCell}</td>
+      <td><div class="docCell">
+        ${docInp(r,'deal','חשבון עסקה')}
+        ${docInp(r,'taxReceipt','חשב. מס קבלה')}
+        ${docInp(r,'receipt','קבלה')}
+      </div></td>
+      <td>${paidField}</td>
+      <td>${inp(r,'notes','text')}</td>
+      <td class="rowActions"><button class="delRow" data-id="${r.id}">✕</button></td>
+      <td class="balCol">${balDisplay}</td>
+    </tr>`;
+  }).join('');
+}
+function optionsHtmlLocal(obj, selected){
+  let html = '<option value="">—</option>';
+  for(const id in obj){ html += `<option value="${id}" ${id===selected?'selected':''}>${obj[id].name||obj[id]}</option>`; }
+  return html;
+}
+function employeeSelect(row){
+  let html = '<option value="">— בחר עובד —</option>';
+  for(const id in data.employees){
+    const name = data.employees[id].name;
+    html += `<option value="${name}" ${row.entity===name?'selected':''}>${name}</option>`;
+  }
+  return `<select data-id="${row.id}" data-field="entity">${html}</select>`;
+}
+function renderEmpList(){
+  const names = [
+    ...Object.values(data.employees).map(e=>e.name),
+    ...Object.values(data.contractors).map(c=>c.name)
+  ];
+  document.getElementById('empList').innerHTML = names.map(n=>`<option value="${n}">`).join('');
+}
+
+/* ============ EVENTS ============ */
+function applyFieldFromInput(t, row){
+  if(t.dataset.doc){
+    row.docNumbers = row.docNumbers || {};
+    row.docNumbers[t.dataset.doc] = t.value;
+    return;
+  }
+  const field = t.dataset.field;
+  if(field==='paid2'){ row.paid = (t.value==='received'); }
+  else if(t.type==='checkbox'){ row[field] = t.checked; }
+  else if(t.dataset.money==='1'){
+    const cleaned = (t.value||'').replace(/,/g,'').trim();
+    row[field] = cleaned===''?0:Number(cleaned);
+  }
+  else if(t.type==='number'){ row[field] = t.value===''?0:Number(t.value); }
+  else { row[field] = t.value; }
+}
+
+// While typing: just update the data model, no re-render (keeps cursor/focus in place).
+document.addEventListener('input', e=>{
+  const t = e.target;
+  const id = t.dataset.id;
+  if(!id) return;
+  const row = data.ledger.find(r=>r.id===id);
+  if(!row) return;
+  applyFieldFromInput(t, row);
+});
+
+// On commit (blur, Enter, or a select/checkbox/date change): recalc + re-render.
+document.addEventListener('change', e=>{
+  const t = e.target;
+  const id = t.dataset.id;
+  if(!id) return;
+  const row = data.ledger.find(r=>r.id===id);
+  if(!row) return;
+  applyFieldFromInput(t, row);
+  if(t.dataset.field==='_contractorId'){
+    row.entity = (data.contractors[t.value]||{}).name || '';
+  }
+  if(row.category==='contractorGross' && row.clusterId){
+    recalcContractorCluster(row.clusterId);
+  }
+  renderAll();
+});
+
+document.addEventListener('click', e=>{
+  if(e.target.classList.contains('delRow')){
+    const id = e.target.dataset.id;
+    const row = data.ledger.find(r=>r.id===id);
+    if(row && row.clusterId){
+      if(!confirm('שורה זו חלק ממקבץ חשבון קבלן (3 שורות). למחוק את כל המקבץ?')) return;
+      data.ledger = data.ledger.filter(r=>r.clusterId!==row.clusterId);
+    } else {
+      data.ledger = data.ledger.filter(r=>r.id!==id);
+    }
+    renderAll();
+  }
+});
+
+/* ============ LOAD / SAVE ============ */
+document.getElementById('fileInput').addEventListener('change', function(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(){
+    try{
+      const parsed = JSON.parse(reader.result);
+      data = Object.assign(seedData(), parsed);
+      recalcAllClusters();
+      activeMonth = 'ALL';
+      renderAll();
+      restoreGhConfigFields();
+    }catch(err){ alert('שגיאה בקריאת הקובץ: '+err.message); }
+  };
+  reader.readAsText(file);
+});
+document.getElementById('saveBtn').addEventListener('click', function(){
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `atlas-cashflow-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+/* ============ GITHUB SYNC ============ */
+let ghFileSha = null; // sha of the last-known file version, needed to overwrite on save
+
+function ghConfig(){
+  return {
+    owner: document.getElementById('ghOwner').value.trim(),
+    repo: document.getElementById('ghRepo').value.trim(),
+    path: document.getElementById('ghPath').value.trim() || 'data.json',
+    branch: document.getElementById('ghBranch').value.trim() || 'main',
+    token: document.getElementById('ghToken').value.trim()
+  };
+}
+function b64EncodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64DecodeUtf8(str){ return decodeURIComponent(escape(atob(str.replace(/\n/g,'')))); }
+function setGhStatus(msg, isError){
+  const el = document.getElementById('ghStatus');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--expense)' : 'var(--income)';
+}
+
+async function githubLoad(){
+  const cfg = ghConfig();
+  if(!cfg.owner || !cfg.repo || !cfg.token){ setGhStatus('נא למלא משתמש, שם מאגר וטוקן', true); return; }
+  setGhStatus('טוען מ-GitHub...');
+  try{
+    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch)}`;
+    const res = await fetch(url, { headers:{ 'Authorization':`token ${cfg.token}`, 'Accept':'application/vnd.github+json' } });
+    if(res.status===404){ setGhStatus('הקובץ עדיין לא קיים במאגר הזה — לחץ "שמור ל-GitHub" כדי ליצור אותו.', true); ghFileSha=null; return; }
+    if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.message || ('שגיאה '+res.status)); }
+    const json = await res.json();
+    ghFileSha = json.sha;
+    const content = b64DecodeUtf8(json.content);
+    const parsed = JSON.parse(content);
+    data = Object.assign(seedData(), parsed);
+    activeMonth = 'ALL';
+    renderAll();
+    restoreGhConfigFields();
+    setGhStatus('נטען בהצלחה מ-GitHub ('+new Date().toLocaleTimeString('he-IL')+')');
+  }catch(err){ setGhStatus('שגיאה בטעינה: '+err.message, true); }
+}
+
+async function githubSave(){
+  const cfg = ghConfig();
+  if(!cfg.owner || !cfg.repo || !cfg.token){ setGhStatus('נא למלא משתמש, שם מאגר וטוקן', true); return; }
+  setGhStatus('שומר ל-GitHub...');
+  try{
+    if(ghFileSha===null){
+      // check if file already exists to get its sha (avoid overwrite conflicts)
+      const checkUrl = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch)}`;
+      const checkRes = await fetch(checkUrl, { headers:{ 'Authorization':`token ${cfg.token}` } });
+      if(checkRes.ok){ const j = await checkRes.json(); ghFileSha = j.sha; }
+    }
+    const body = {
+      message: 'עדכון תזרים מזומנים - '+new Date().toLocaleString('he-IL'),
+      content: b64EncodeUtf8(JSON.stringify(data, null, 2)),
+      branch: cfg.branch
+    };
+    if(ghFileSha) body.sha = ghFileSha;
+    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(cfg.path)}`;
+    const res = await fetch(url, {
+      method:'PUT',
+      headers:{ 'Authorization':`token ${cfg.token}`, 'Content-Type':'application/json', 'Accept':'application/vnd.github+json' },
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.message || ('שגיאה '+res.status));
+    ghFileSha = j.content.sha;
+    setGhStatus('נשמר בהצלחה ל-GitHub ('+new Date().toLocaleTimeString('he-IL')+')');
+  }catch(err){ setGhStatus('שגיאה בשמירה: '+err.message, true); }
+}
+
+document.getElementById('githubToggle').addEventListener('click', ()=>{
+  const panel = document.getElementById('githubPanel');
+  panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+});
+document.getElementById('ghLoadBtn').addEventListener('click', githubLoad);
+document.getElementById('ghSaveBtn').addEventListener('click', githubSave);
+// remember non-sensitive connection settings (owner/repo/path/branch only — never the token) inside the data file
+['ghOwner','ghRepo','ghPath','ghBranch'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', e=>{
+    data.githubConfig = data.githubConfig || {};
+    const key = id.replace('gh','').toLowerCase();
+    data.githubConfig[key] = e.target.value;
+  });
+});
+function restoreGhConfigFields(){
+  const c = data.githubConfig || {};
+  if(c.owner) document.getElementById('ghOwner').value = c.owner;
+  if(c.repo) document.getElementById('ghRepo').value = c.repo;
+  if(c.path) document.getElementById('ghPath').value = c.path;
+  if(c.branch) document.getElementById('ghBranch').value = c.branch;
+}
+
+/* ============ MAIN RENDER ============ */
+function renderAll(){
+  recalcAllClusters();
+  renderMonthNav();
+  renderQuickAdd();
+  renderEmpList();
+  renderLedger();
+  document.getElementById('subHeader').textContent =
+    `מציג ${monthLabel(activeMonth)} · ${data.ledger.length} שורות ביומן · יתרת פתיחה ${fmtMoney(data.openingBalance)}`;
+}
+
+renderAll();
+restoreGhConfigFields();
+</script>
+</body>
+</html>
