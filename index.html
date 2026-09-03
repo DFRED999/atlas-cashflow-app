@@ -80,13 +80,23 @@
   td input[type="checkbox"]{width:auto;min-width:auto;}
   .docCell{display:flex;flex-direction:column;gap:1px;}
   .docCell input{font-size:11px;padding:2px 3px;}
-  .rowActions{text-align:center;}
+  .rowActions{text-align:center;white-space:nowrap;}
   .delRow{border:none;background:none;color:var(--expense);font-size:14px;cursor:pointer;padding:1px 5px;}
+  .moveRow{border:none;background:none;color:var(--muted);font-size:12px;cursor:pointer;padding:1px 4px;}
+  .moveRow:hover{color:var(--ink);}
   .balCell{font-variant-numeric:tabular-nums;font-weight:700;text-align:left;direction:ltr;color:var(--ink);}
   .balCell.noimpact{color:var(--muted);font-weight:400;font-style:italic;}
   .profitCell{font-variant-numeric:tabular-nums;color:var(--warn);text-align:left;direction:ltr;}
   .empty-hint{padding:16px 18px;color:var(--muted);}
   footer.appFooter{max-width:1600px;margin:0 auto;padding:0 24px 40px 24px;color:var(--muted);font-size:11.5px;}
+  .modalOverlay{position:fixed;inset:0;background:rgba(28,43,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modalBox{background:#fff;border-radius:8px;max-width:820px;width:100%;max-height:85vh;overflow:auto;padding:22px 26px;}
+  .modalBox h2{margin-top:0;font-size:17px;}
+  .modalBox table{width:100%;font-size:13px;}
+  .modalBox th{position:static;background:none;padding:6px 4px;}
+  .modalBox td{padding:6px 4px;}
+  .modalBox select, .modalBox input{padding:5px;border:1px solid var(--line);border-radius:4px;font-family:inherit;}
+  .modalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
   .catLabel{font-size:11px;color:var(--muted);}
 </style>
 </head>
@@ -144,6 +154,10 @@
 
 <footer class="appFooter">גרסה 2 · יומן רציף עם עו"ש מתגלגל · כל הנתונים נשמרים מקומית בקובץ JSON שאתה מוריד/טוען — שום דבר לא נשלח לשרת.</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
 <script>
 /* ============ SEED DATA ============ */
 function seedData(){
@@ -214,6 +228,47 @@ function allMonths(){
   return Array.from(set).sort();
 }
 
+/* ============ MANUAL ROW ORDER ============ */
+// Rows are sorted by a numeric `order` field the user controls with ▲▼ buttons.
+// Rows belonging to the same contractor cluster always share one order value so
+// they stay together as a block; CATEGORY_RANK breaks the tie between them.
+const CATEGORY_RANK = { contractorGross:0, contractorProfit:1, contractorPayout:2 };
+function unitKey(row){ return row.clusterId || row.id; }
+function ensureOrder(){
+  if(data.ledger.every(r=> typeof r.order === 'number')) return;
+  const sorted = data.ledger.slice().sort((a,b)=> rowSortKey(a).localeCompare(rowSortKey(b)));
+  const seen = {};
+  let counter = 1;
+  sorted.forEach(r=>{
+    const key = unitKey(r);
+    if(!(key in seen)) seen[key] = counter++;
+    if(typeof r.order !== 'number') r.order = seen[key];
+  });
+}
+function nextOrder(){
+  let max = 0;
+  data.ledger.forEach(r=>{ if(typeof r.order==='number' && r.order>max) max=r.order; });
+  return max+1;
+}
+function moveUnit(key, direction){
+  const sortedAll = computeBalances(); // sorted by order + category tie-break
+  const display = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
+  const units = []; const seen = new Set();
+  display.forEach(r=>{ const k=unitKey(r); if(!seen.has(k)){ seen.add(k); units.push(k); } });
+  const idx = units.indexOf(key);
+  if(idx===-1) return;
+  const swapWith = direction==='up' ? idx-1 : idx+1;
+  if(swapWith<0 || swapWith>=units.length) return;
+  const keyA = units[idx], keyB = units[swapWith];
+  const orderA = data.ledger.find(r=>unitKey(r)===keyA).order;
+  const orderB = data.ledger.find(r=>unitKey(r)===keyB).order;
+  data.ledger.forEach(r=>{
+    if(unitKey(r)===keyA) r.order = orderB;
+    else if(unitKey(r)===keyB) r.order = orderA;
+  });
+  renderAll();
+}
+
 /* ============ CONTRACTOR CLUSTER LOGIC ============ */
 function recalcContractorCluster(clusterId){
   const rows = data.ledger.filter(r=>r.clusterId===clusterId);
@@ -251,7 +306,12 @@ function recalcAllClusters(){
 
 /* ============ RUNNING BALANCE ============ */
 function computeBalances(){
-  const sorted = data.ledger.slice().sort((a,b)=> rowSortKey(a).localeCompare(rowSortKey(b)));
+  ensureOrder();
+  const sorted = data.ledger.slice().sort((a,b)=>{
+    const oa=(a.order||0), ob=(b.order||0);
+    if(oa!==ob) return oa-ob;
+    return (CATEGORY_RANK[a.category]||0)-(CATEGORY_RANK[b.category]||0);
+  });
   let bal = Number(data.openingBalance)||0;
   sorted.forEach(r=>{
     if(r.affectsBalance!==false){
@@ -264,36 +324,166 @@ function computeBalances(){
 
 /* ============ QUICK ADD ============ */
 function quickAddSalary(){
-  data.ledger.push({ id:uid('l'), category:'salary', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'salary', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
   renderAll();
 }
 function quickAddPension(){
-  data.ledger.push({ id:uid('l'), category:'pension', entity:'', project:'קרן פנסיה', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'pension', entity:'', project:'קרן פנסיה', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
   renderAll();
 }
 function quickAddCredit(){
-  data.ledger.push({ id:uid('l'), category:'credit', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'credit', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
   renderAll();
 }
 function quickAddStatutory(){
-  data.ledger.push({ id:uid('l'), category:'statutory', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'', _statutoryCode:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'statutory', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'', _statutoryCode:'' });
   renderAll();
 }
 function quickAddProjectIncome(){
-  data.ledger.push({ id:uid('l'), category:'projectIncome', entity:'', project:'', responsible:'', clientId:'', branchId:'', invoiceNumber:'', submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, receiptIssued:false, docNumbers:{}, notes:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'projectIncome', entity:'', project:'', responsible:'', clientId:'', branchId:'', invoiceNumber:'', submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, receiptIssued:false, docNumbers:{}, notes:'' });
   renderAll();
 }
 function quickAddContractor(){
   const clusterId = uid('cl');
-  const base = { clusterId, submittedDate:'', expectedDate:'', forMonth:'', project:'', responsible:'', notes:'', docNumbers:{} };
+  const base = { clusterId, order:nextOrder(), submittedDate:'', expectedDate:'', forMonth:'', project:'', responsible:'', notes:'', docNumbers:{} };
   data.ledger.push(Object.assign({id:uid('l'),category:'contractorGross', entity:'', income:0, expense:0, affectsBalance:true, _contractorId:''}, base));
   data.ledger.push(Object.assign({id:uid('l'),category:'contractorProfit', entity:'', income:0, expense:0, affectsBalance:false, profitAmount:0}, base));
   data.ledger.push(Object.assign({id:uid('l'),category:'contractorPayout', entity:'', income:0, expense:0, affectsBalance:true}, base));
   renderAll();
 }
 function quickAddOther(){
-  data.ledger.push({ id:uid('l'), category:'other', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
+  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'other', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
   renderAll();
+}
+
+/* ============ PAYSLIP (PDF) IMPORT ============ */
+// Reconstructs each page's text into lines (grouped by y, ordered right-to-left by x)
+// so Hebrew reading order is correct, then looks for known anchor patterns:
+// employee ID (9 digits) + name, "שכר נטו" (net salary) amount, and the pay month.
+async function extractPayslipPages(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const results = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items.map(it => ({ text: it.str, x: it.transform[4], y: it.transform[5] })).filter(it=>it.text && it.text.trim()!=='');
+    // group into lines by y (2px tolerance), each line's items ordered right-to-left (x descending)
+    const lines = [];
+    items.sort((a,b)=> b.y - a.y);
+    items.forEach(it=>{
+      let line = lines.find(l => Math.abs(l.y - it.y) < 2.5);
+      if(!line){ line = {y: it.y, items: []}; lines.push(line); }
+      line.items.push(it);
+    });
+    lines.forEach(l => l.items.sort((a,b)=> b.x - a.x));
+
+    let month='', firstName='', lastName='', netAmount=null;
+    lines.forEach(l=>{
+      const texts = l.items.map(it=>it.text.trim());
+      const joined = texts.join(' ');
+      const monthMatch = joined.match(/(\d{1,2})\/(\d{4})/);
+      if(monthMatch && !month) month = monthMatch[2] + '-' + monthMatch[1].padStart(2,'0');
+
+      const idIdx = texts.findIndex(t => /^\d{9}$/.test(t));
+      if(idIdx >= 2 && !firstName){
+        const prev1 = texts[idIdx-1], prev2 = texts[idIdx-2];
+        const isHeb = s => /[\u0590-\u05FF]/.test(s) && !/^\d+$/.test(s);
+        if(isHeb(prev1) && isHeb(prev2)){ firstName = prev1; lastName = prev2; }
+      }
+      if(joined.includes('נטו') && joined.includes('לתשלום') && netAmount===null){
+        const numMatch = texts.find(t => /^[\d,]+\.\d{2}$/.test(t));
+        if(numMatch) netAmount = Number(numMatch.replace(/,/g,''));
+      }
+    });
+    results.push({ page:p, month, firstName, lastName, netAmount });
+  }
+  return results;
+}
+
+function matchEmployeeId(firstName, lastName){
+  const norm = s => (s||'').replace(/[־\-\s]/g,'');
+  const fn = norm(firstName);
+  for(const id in data.employees){
+    const empName = norm(data.employees[id].name);
+    if(fn && (empName.includes(fn) || fn.includes(empName))) return id;
+  }
+  return '';
+}
+
+async function handlePayslipUpload(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  setGhStatus('קורא את קובץ התלושים...');
+  try{
+    const rows = await extractPayslipPages(file);
+    showPayslipReview(rows);
+    setGhStatus('');
+  }catch(err){
+    setGhStatus('שגיאה בקריאת ה-PDF: '+err.message, true);
+  }
+  ev.target.value = '';
+}
+
+function showPayslipReview(rows){
+  const months = rows.map(r=>r.month).filter(Boolean);
+  const commonMonth = months.length ? months.sort((a,b)=>
+    months.filter(v=>v===a).length - months.filter(v=>v===b).length).pop() : (activeMonth==='ALL'?'':activeMonth);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modalOverlay';
+  overlay.id = 'payslipModal';
+  overlay.innerHTML = `
+    <div class="modalBox">
+      <h2>ייבוא תלושי שכר</h2>
+      <div style="margin-bottom:12px;font-size:13px;">
+        חודש: <input type="text" id="payslipMonth" value="${commonMonth}" style="width:90px;" placeholder="YYYY-MM">
+        <span style="color:var(--muted);font-size:12px;margin-right:10px;">בדוק שכל שורה משויכת לעובד הנכון ושהסכום תקין לפני הייבוא.</span>
+      </div>
+      <table>
+        <thead><tr><th>עמוד</th><th>שם שזוהה</th><th>עובד</th><th>נטו לתשלום</th><th>ייבא?</th></tr></thead>
+        <tbody id="payslipRows">
+          ${rows.map((r,i)=>{
+            const matchId = matchEmployeeId(r.firstName, r.lastName);
+            return `<tr data-idx="${i}">
+              <td>${r.page}</td>
+              <td>${(r.firstName||'')+' '+(r.lastName||'') || '<span style="color:var(--expense)">לא זוהה</span>'}</td>
+              <td><select data-field="emp">${optionsHtmlLocal(data.employees, matchId)}</select></td>
+              <td><input type="text" data-field="amount" value="${r.netAmount!==null?r.netAmount.toFixed(2):''}" style="width:90px;direction:ltr;text-align:left;"></td>
+              <td style="text-align:center;"><input type="checkbox" data-field="include" ${matchId && r.netAmount!==null ? 'checked' : ''}></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      <div class="modalActions">
+        <button class="ghost" id="payslipCancel">ביטול</button>
+        <button class="primary" id="payslipConfirm">ייבא לדוח</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('payslipCancel').addEventListener('click', ()=> overlay.remove());
+  document.getElementById('payslipConfirm').addEventListener('click', ()=>{
+    const month = document.getElementById('payslipMonth').value.trim();
+    if(!/^\d{4}-\d{2}$/.test(month)){ alert('פורמט חודש לא תקין (נדרש YYYY-MM)'); return; }
+    document.querySelectorAll('#payslipRows tr').forEach(tr=>{
+      const include = tr.querySelector('[data-field="include"]').checked;
+      if(!include) return;
+      const empId = tr.querySelector('[data-field="emp"]').value;
+      const amount = Number(tr.querySelector('[data-field="amount"]').value.replace(/,/g,'')) || 0;
+      if(!empId || !amount) return;
+      const empName = data.employees[empId].name;
+      let existing = data.ledger.find(r=> r.category==='salary' && r.entity===empName && r.forMonth===month);
+      if(existing){ existing.income = 0; existing.expense = amount; }
+      else{
+        data.ledger.push({ id:uid('l'), order:nextOrder(), category:'salary', entity:empName, project:'', responsible:'', forMonth:month, submittedDate:'', expectedDate:'', income:0, expense:amount, affectsBalance:true, paid:false, docNumbers:{}, notes:'יובא מתלוש שכר' });
+      }
+    });
+    overlay.remove();
+    if(!data.knownMonths.includes(month)) data.knownMonths.push(month);
+    activeMonth = month;
+    renderAll();
+  });
 }
 
 function renderQuickAdd(){
@@ -305,7 +495,9 @@ function renderQuickAdd(){
     <button class="small" onclick="quickAddContractor()">+ חשבון קבלן (3 שורות)</button>
     <button class="small" onclick="quickAddProjectIncome()">+ הכנסת פרויקט</button>
     <button class="small" onclick="quickAddOther()">+ שורה חופשית</button>
+    <label class="small fileBtn" style="cursor:pointer;">ייבוא תלושי שכר (PDF)<input type="file" id="payslipInput" accept="application/pdf" style="display:none;"></label>
   `;
+  document.getElementById('payslipInput').addEventListener('change', handlePayslipUpload);
 }
 
 /* ============ DASHBOARD ============ */
@@ -454,7 +646,11 @@ function renderLedger(){
       </div></td>
       <td>${paidField}</td>
       <td>${inp(r,'notes','text')}</td>
-      <td class="rowActions"><button class="delRow" data-id="${r.id}">✕</button></td>
+      <td class="rowActions">
+        <button class="moveRow" data-key="${unitKey(r)}" data-dir="up" title="הזז למעלה">▲</button>
+        <button class="moveRow" data-key="${unitKey(r)}" data-dir="down" title="הזז למטה">▼</button>
+        <button class="delRow" data-id="${r.id}">✕</button>
+      </td>
       <td class="balCol">${balDisplay}</td>
     </tr>`;
   }).join('');
@@ -536,6 +732,9 @@ document.addEventListener('click', e=>{
       data.ledger = data.ledger.filter(r=>r.id!==id);
     }
     renderAll();
+  }
+  if(e.target.classList.contains('moveRow')){
+    moveUnit(e.target.dataset.key, e.target.dataset.dir);
   }
 });
 
