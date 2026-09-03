@@ -98,26 +98,14 @@
     <div class="sub" id="subHeader">נתונים נטענים...</div>
   </div>
   <div class="fileControls">
-    <button class="ghost" id="ghRefreshBtn" title="טוען מחדש מה-GitHub">רענן נתונים</button>
+    <button class="ghost" id="ghRefreshBtn" title="טוען נתונים עדכניים">רענן נתונים</button>
     <button class="primary" id="ghSaveBtn">שמור לענן</button>
-    <button class="ghost" id="advancedToggle" style="font-size:11px;">אפשרויות נוספות ▾</button>
   </div>
 </header>
-
-<div id="advancedPanel" style="display:none;background:#fff;border-bottom:1px solid var(--line);padding:14px 24px;">
-  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;max-width:900px;">
-    <div><label style="font-size:11px;color:var(--muted);display:block;">Personal Access Token (רק לשמירה)</label>
-      <input type="password" id="ghToken" placeholder="ghp_..." style="padding:6px;border:1px solid var(--line);border-radius:4px;width:260px;"></div>
-    <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;">
-      <input type="checkbox" id="ghRemember" style="width:auto;"> זכור טוקן במכשיר הזה
-    </label>
-    <label class="fileBtn" style="font-size:12px;">טען קובץ JSON מקומי<input type="file" id="fileInput" accept="application/json"></label>
-    <button class="small" id="saveBtn">הורד גיבוי JSON</button>
-  </div>
-  <div id="ghStatus" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
-  <div style="font-size:11.5px;color:var(--muted);margin-top:6px;max-width:800px;">
-    האתר טוען את הנתונים אוטומטית מ-GitHub בכל פתיחה. הטוקן דרוש רק כדי לשמור שינויים בחזרה - הוא נשמר במכשיר הזה בלבד אם תסמן את התיבה, ולעולם לא בתוך קובץ הנתונים עצמו.
-  </div>
+<div style="padding:6px 24px 0 24px;display:flex;justify-content:space-between;align-items:center;">
+  <div id="ghStatus" style="font-size:12px;color:var(--muted);"></div>
+  <label class="fileBtn" style="font-size:11px;padding:3px 9px;">גיבוי מקומי<input type="file" id="fileInput" accept="application/json" style="display:none;"></label>
+  <button class="small" id="saveBtn" style="font-size:11px;padding:3px 9px;">הורד גיבוי</button>
 </div>
 
 <nav class="months" id="monthNav"></nav>
@@ -577,93 +565,52 @@ document.getElementById('saveBtn').addEventListener('click', function(){
   URL.revokeObjectURL(url);
 });
 
-/* ============ GITHUB SYNC ============ */
-// Fixed connection — this app always reads/writes the same public repo/file.
-const GH_OWNER = 'dfred999';
-const GH_REPO = 'atlas-cashflow-app';
-const GH_PATH = 'data.json';
-const GH_BRANCH = 'main';
-const GH_TOKEN_KEY = 'atlas_gh_token';
+/* ============ FIREBASE SYNC ============ */
+// Fully open Realtime Database — no auth/token needed for read or write.
+const FIREBASE_URL = 'https://atlas-cashflow-3b7aa-default-rtdb.europe-west1.firebasedatabase.app';
+const FIREBASE_NODE = 'atlasCashflow';
 
-let ghFileSha = null; // sha of the last-known file version, needed to overwrite on save
-
-function b64EncodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
-function b64DecodeUtf8(str){ return decodeURIComponent(escape(atob(str.replace(/\n/g,'')))); }
 function setGhStatus(msg, isError){
   const el = document.getElementById('ghStatus');
   if(!el) return;
   el.textContent = msg;
   el.style.color = isError ? 'var(--expense)' : 'var(--income)';
 }
-function getSavedToken(){
-  try{ return localStorage.getItem(GH_TOKEN_KEY) || ''; }catch(e){ return ''; }
-}
 
-// Public, unauthenticated read — works for anyone, no token needed.
-async function githubAutoLoad(showStatus){
-  if(showStatus) setGhStatus('טוען נתונים מ-GitHub...');
+async function firebaseAutoLoad(showStatus){
+  if(showStatus) setGhStatus('טוען נתונים...');
   try{
-    const bust = 't=' + Date.now();
-    const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}?${bust}`;
-    const res = await fetch(rawUrl);
-    if(res.status===404){
-      if(showStatus) setGhStatus('עדיין אין נתונים שמורים ב-GitHub — זה מסך ברירת מחדל.');
-      return;
-    }
+    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json?_=${Date.now()}`);
     if(!res.ok) throw new Error('שגיאה '+res.status);
     const parsed = await res.json();
+    if(parsed===null){
+      if(showStatus) setGhStatus('עדיין אין נתונים שמורים — זה מסך ברירת מחדל.');
+      return;
+    }
     data = Object.assign(seedData(), parsed);
     activeMonth = 'ALL';
     renderAll();
-    if(showStatus) setGhStatus('עודכן מ-GitHub ('+new Date().toLocaleTimeString('he-IL')+')');
+    if(showStatus) setGhStatus('עודכן ('+new Date().toLocaleTimeString('he-IL')+')');
   }catch(err){
     if(showStatus) setGhStatus('שגיאה בטעינה: '+err.message, true);
   }
 }
 
-async function githubSave(){
-  const tokenField = document.getElementById('ghToken');
-  const token = (tokenField.value.trim()) || getSavedToken();
-  if(!token){
-    setGhStatus('נא להזין טוקן בשדה למעלה (לחץ "אפשרויות נוספות")', true);
-    document.getElementById('advancedPanel').style.display = 'block';
-    return;
-  }
-  if(document.getElementById('ghRemember').checked){
-    try{ localStorage.setItem(GH_TOKEN_KEY, token); }catch(e){}
-  }
-  setGhStatus('שומר ל-GitHub...');
+async function firebaseSave(){
+  setGhStatus('שומר...');
   try{
-    if(ghFileSha===null){
-      const checkUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}?ref=${GH_BRANCH}`;
-      const checkRes = await fetch(checkUrl, { headers:{ 'Authorization':`token ${token}` } });
-      if(checkRes.ok){ const j = await checkRes.json(); ghFileSha = j.sha; }
-    }
-    const body = {
-      message: 'עדכון תזרים מזומנים - '+new Date().toLocaleString('he-IL'),
-      content: b64EncodeUtf8(JSON.stringify(data, null, 2)),
-      branch: GH_BRANCH
-    };
-    if(ghFileSha) body.sha = ghFileSha;
-    const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
-    const res = await fetch(url, {
+    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json`, {
       method:'PUT',
-      headers:{ 'Authorization':`token ${token}`, 'Content-Type':'application/json', 'Accept':'application/vnd.github+json' },
-      body: JSON.stringify(body)
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(data)
     });
-    const j = await res.json();
-    if(!res.ok) throw new Error(j.message || ('שגיאה '+res.status));
-    ghFileSha = j.content.sha;
+    if(!res.ok) throw new Error('שגיאה '+res.status);
     setGhStatus('נשמר בהצלחה לכולם ('+new Date().toLocaleTimeString('he-IL')+')');
   }catch(err){ setGhStatus('שגיאה בשמירה: '+err.message, true); }
 }
 
-document.getElementById('advancedToggle').addEventListener('click', ()=>{
-  const panel = document.getElementById('advancedPanel');
-  panel.style.display = panel.style.display==='none' ? 'block' : 'none';
-});
-document.getElementById('ghRefreshBtn').addEventListener('click', ()=>githubAutoLoad(true));
-document.getElementById('ghSaveBtn').addEventListener('click', githubSave);
+document.getElementById('ghRefreshBtn').addEventListener('click', ()=>firebaseAutoLoad(true));
+document.getElementById('ghSaveBtn').addEventListener('click', firebaseSave);
 
 /* ============ MAIN RENDER ============ */
 function renderAll(){
@@ -677,12 +624,7 @@ function renderAll(){
 }
 
 renderAll();
-// Pre-fill remembered token (if this device saved one before) and auto-load current data from GitHub.
-(function(){
-  const saved = getSavedToken();
-  if(saved){ document.getElementById('ghToken').value = saved; document.getElementById('ghRemember').checked = true; }
-})();
-githubAutoLoad(false);
+firebaseAutoLoad(false);
 </script>
 </body>
 </html>
