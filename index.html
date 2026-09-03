@@ -1,911 +1,974 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>תזרים מזומנים · אטלס הנדסה וניהול פרויקטים</title>
-<style>
-  :root{
-    --ink:#1c2b2a; --paper:#eef2f0; --paper-2:#ffffff; --line:#d6ddd9;
-    --income:#1f6f5c; --income-bg:#e4f0ec;
-    --expense:#9a3324; --expense-bg:#f6e6e2;
-    --accent:#3d6b5c; --muted:#5f6f6a; --warn:#b3541e;
-    --radius:6px;
-    --c-salary:#8a7a4e; --c-pension:#5b7a99; --c-credit:#7a5b8a;
-    --c-statutory:#2f5f8a; --c-cgross:#9a4a44; --c-cprofit:#c98a3a; --c-cpayout:#9a4a44;
-    --c-income:#2f7a5a; --c-other:#6b6b6b;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:"Segoe UI","Arial Hebrew",Arial,sans-serif;background:var(--paper);color:var(--ink);font-size:13.5px;line-height:1.5;}
-  header.top{background:var(--paper-2);border-bottom:2px solid var(--ink);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-  header.top h1{font-size:19px;margin:0;font-weight:700;}
-  header.top .sub{font-size:12px;color:var(--muted);margin-top:2px;}
-  .fileControls{display:flex;gap:8px;align-items:center;}
-  button{font-family:inherit;font-size:13px;border:1px solid var(--ink);background:var(--paper-2);color:var(--ink);border-radius:var(--radius);padding:6px 13px;cursor:pointer;}
-  button.primary{background:var(--ink);color:#fff;}
-  button.small{padding:4px 9px;font-size:12px;}
-  button:hover{opacity:.85;}
-  #fileInput{display:none;}
-  label.fileBtn{font-size:13px;border:1px solid var(--ink);background:var(--paper-2);border-radius:var(--radius);padding:6px 13px;cursor:pointer;}
-
-  nav.months{display:flex;gap:6px;padding:12px 24px 0 24px;flex-wrap:wrap;align-items:center;}
-  nav.months button.month{border:1px solid var(--line);background:var(--paper-2);padding:6px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;}
-  nav.months button.month.active{background:var(--ink);color:#fff;border-color:var(--ink);}
-  nav.months button.addMonth{border-radius:999px;border:1px dashed var(--muted);color:var(--muted);background:transparent;}
-
-  main{padding:18px 24px 60px 24px;max-width:1600px;margin:0 auto;}
-
-  section.dashboard{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;}
-  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;}
-  .card .label{font-size:11.5px;color:var(--muted);margin-bottom:5px;}
-  .card .value{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .card.income .value{color:var(--income);}
-  .card.expense .value{color:var(--expense);}
-  .card.net .value{color:var(--ink);}
-  .card.commission .value{color:var(--warn);}
-  .card.balance .value{color:var(--accent);}
-
-  .breakdowns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
-  .breakdown-box{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;}
-  .breakdown-box h3{margin:0 0 8px 0;font-size:12.5px;color:var(--muted);font-weight:600;}
-  .breakdown-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--paper);font-size:12.5px;}
-  .breakdown-row:last-child{border-bottom:none;}
-  .breakdown-row .amt{font-variant-numeric:tabular-nums;font-weight:600;}
-
-  .quickAdd{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
-  .quickAdd button{background:var(--paper-2);}
-
-  .ledgerWrap{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);overflow-x:auto;}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1500px;}
-  th{text-align:right;font-size:11px;color:var(--muted);font-weight:600;padding:11px 8px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:#f7f9f8;z-index:3;}
-  td{padding:9px 7px;border-bottom:1px solid var(--paper);vertical-align:middle;}
-  tr{line-height:1.7;}
-  th.balCol, td.balCol{position:sticky;left:0;z-index:2;background:var(--paper-2);box-shadow:2px 0 5px rgba(0,0,0,.08);}
-  th.balCol{z-index:4;background:#f7f9f8;}
-  tr.cat-salary td:first-child{border-right:3px solid var(--c-salary);}
-  tr.cat-pension td:first-child{border-right:3px solid var(--c-pension);}
-  tr.cat-credit td:first-child{border-right:3px solid var(--c-credit);}
-  tr.cat-statutory td:first-child{border-right:3px solid var(--c-statutory);}
-  tr.cat-contractorGross td:first-child{border-right:3px solid var(--c-cgross);}
-  tr.cat-contractorProfit td:first-child{border-right:3px solid var(--c-cprofit);}
-  tr.cat-contractorPayout td:first-child{border-right:3px solid var(--c-cpayout);}
-  tr.cat-projectIncome td:first-child{border-right:3px solid var(--c-income);}
-  tr.cat-other td:first-child{border-right:3px solid var(--c-other);}
-  tr.cat-contractorProfit{opacity:.75;}
-  td input, td select{width:100%;min-width:70px;border:1px solid transparent;background:transparent;font-family:inherit;font-size:12.5px;padding:3px 4px;border-radius:4px;color:var(--ink);}
-  td input:hover, td select:hover{border-color:var(--line);}
-  td input:focus, td select:focus{border-color:var(--ink);outline:none;background:#fff;}
-  td input[type="number"]{font-variant-numeric:tabular-nums;text-align:left;direction:ltr;min-width:80px;}
-  td input[type="date"]{font-variant-numeric:tabular-nums;min-width:110px;}
-  td input[type="checkbox"]{width:auto;min-width:auto;}
-  .docCell{display:flex;flex-direction:column;gap:1px;}
-  .docCell input{font-size:11px;padding:2px 3px;}
-  .rowActions{text-align:center;white-space:nowrap;}
-  .delRow{border:none;background:none;color:var(--expense);font-size:14px;cursor:pointer;padding:1px 5px;}
-  .moveRow{border:none;background:none;color:var(--muted);font-size:12px;cursor:pointer;padding:1px 4px;}
-  .moveRow:hover{color:var(--ink);}
-  .dragHandle{cursor:grab;color:var(--muted);text-align:center;font-size:14px;user-select:none;width:22px;}
-  tr.dragging{opacity:.4;}
-  tr.dragOverTop td{box-shadow: inset 0 2px 0 var(--accent);}
-  tr.dragOverBottom td{box-shadow: inset 0 -2px 0 var(--accent);}
-  .balCell{font-variant-numeric:tabular-nums;font-weight:700;text-align:left;direction:ltr;color:var(--ink);}
-  .balCell.noimpact{color:var(--muted);font-weight:400;font-style:italic;}
-  .profitCell{font-variant-numeric:tabular-nums;color:var(--warn);text-align:left;direction:ltr;}
-  .empty-hint{padding:16px 18px;color:var(--muted);}
-  footer.appFooter{max-width:1600px;margin:0 auto;padding:0 24px 40px 24px;color:var(--muted);font-size:11.5px;}
-  .modalOverlay{position:fixed;inset:0;background:rgba(28,43,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
-  .modalBox{background:#fff;border-radius:8px;max-width:820px;width:100%;max-height:85vh;overflow:auto;padding:22px 26px;}
-  .modalBox h2{margin-top:0;font-size:17px;}
-  .modalBox table{width:100%;font-size:13px;}
-  .modalBox th{position:static;background:none;padding:6px 4px;}
-  .modalBox td{padding:6px 4px;}
-  .modalBox select, .modalBox input{padding:5px;border:1px solid var(--line);border-radius:4px;font-family:inherit;}
-  .modalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
-  .catLabel{font-size:11px;color:var(--muted);}
-</style>
-</head>
-<body>
-
-<header class="top">
-  <div>
-    <h1>תזרים מזומנים · ב.ד. אטלס הנדסה וניהול פרויקטים</h1>
-    <div class="sub" id="subHeader">נתונים נטענים...</div>
-  </div>
-  <div class="fileControls">
-    <button class="ghost" id="ghRefreshBtn" title="טוען נתונים עדכניים">רענן נתונים</button>
-    <button class="primary" id="ghSaveBtn">שמור לענן</button>
-  </div>
-</header>
-<div style="padding:6px 24px 0 24px;display:flex;justify-content:space-between;align-items:center;">
-  <div id="ghStatus" style="font-size:12px;color:var(--muted);"></div>
-  <label class="fileBtn" style="font-size:11px;padding:3px 9px;">גיבוי מקומי<input type="file" id="fileInput" accept="application/json" style="display:none;"></label>
-  <button class="small" id="saveBtn" style="font-size:11px;padding:3px 9px;">הורד גיבוי</button>
-</div>
-
-<nav class="months" id="monthNav"></nav>
-
-<main>
-<datalist id="empList"></datalist>
-  <section class="dashboard" id="dashboard"></section>
-  <div class="breakdowns" id="breakdowns"></div>
-
-  <div class="quickAdd" id="quickAdd"></div>
-
-  <div class="ledgerWrap">
-    <table>
-      <thead>
-        <tr>
-          <th></th>
-          <th>סוג</th>
-          <th>גוף</th>
-          <th>פרויקט</th>
-          <th>אחראי</th>
-          <th>הוגש</th>
-          <th>צפי תשלום</th>
-          <th>הכנסות</th>
-          <th>הוצאות</th>
-          <th>עמלה (תיעוד)</th>
-          <th>מסמכים</th>
-          <th>שולם/התקבל</th>
-          <th>הערות</th>
-          <th></th>
-          <th class="balCol">עו"ש</th>
-        </tr>
-      </thead>
-      <tbody id="ledgerBody"></tbody>
-    </table>
-  </div>
-</main>
-
-<footer class="appFooter">גרסה 2 · יומן רציף עם עו"ש מתגלגל · כל הנתונים נשמרים מקומית בקובץ JSON שאתה מוריד/טוען — שום דבר לא נשלח לשרת.</footer>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-</script>
-<script>
-/* ============ SEED DATA ============ */
-function seedData(){
-  return {
-    openingBalance: 434874,
-    employees: {
-      denis:{name:"דניס"}, beri:{name:"ברי"}, ludmila:{name:"לודמילה"},
-      adi:{name:"עדי"}, shaili:{name:"שי לי"}, dana:{name:"דנה"}, ofir:{name:"אופיר"}
+{
+  "openingBalance": 255174,
+  "employees": {
+    "denis": {
+      "name": "דניס"
     },
-    contractors: {
-      erez:{name:"ארז",paymentTermsDays:45,commissionPercent:12},
-      marit:{name:"מרית",paymentTermsDays:45,commissionPercent:15},
-      emil:{name:"אמיל",paymentTermsDays:45,commissionPercent:10},
-      dima:{name:"דימה",paymentTermsDays:45,commissionPercent:15},
-      noam:{name:"נועם",paymentTermsDays:45,commissionPercent:15},
-      yarden:{name:"ירדן",paymentTermsDays:45,commissionPercent:12},
-      rafael:{name:"רפאל",paymentTermsDays:45,commissionPercent:15}
+    "beri": {
+      "name": "ברי"
     },
-    clients: {
-      mod:{name:"משרד הביטחון", branches:{
-        south:"ענף דרום", north:"ענף צפון", seam:"קו התפר", planning:"תו\"ב",
-        b561:"561", b562:"562", b563:"563", b564:"564", comms:"ענף תקשוב", negev:"אט\"ל לנגב"
-      }}
+    "ludmila": {
+      "name": "לודמילה"
     },
-    statutoryCodes: { "2761":"מע\"מ", "2760":"מס הכנסה", "2762":"ניכויים מס הכנסה", "38286":"ביטוח לאומי" },
-    knownMonths: ["2026-09"],
-    ledger: []
-  };
-}
-
-let data = seedData();
-let activeMonth = 'ALL';
-
-const CAT_LABELS = {
-  salary:"משכורת", pension:"פנסיה", credit:"אשראי/בנק", statutory:"סטטוטורי",
-  contractorGross:"קבלן - הכנסה מלאה", contractorProfit:"קבלן - עמלה (תיעוד)",
-  contractorPayout:"קבלן - תשלום לקבלן", projectIncome:"הכנסת פרויקט", other:"אחר"
-};
-
-/* ============ HELPERS ============ */
-const HEB_MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-function monthLabel(m){
-  if(!m || m==='ALL') return "כל התקופה";
-  const [y,mo] = m.split("-").map(Number);
-  return HEB_MONTHS[mo-1]+" "+y;
-}
-function fmtMoney(n){
-  n = Number(n)||0;
-  return n.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2})+" ₪";
-}
-function addDays(dateStr, days){
-  if(!dateStr) return "";
-  const d = new Date(dateStr+"T00:00:00");
-  d.setDate(d.getDate()+Number(days||0));
-  return d.toISOString().slice(0,10);
-}
-function uid(p){ return p+"_"+Math.random().toString(36).slice(2,9); }
-function rowMonth(row){
-  const d = row.expectedDate || row.submittedDate || (row.forMonth ? row.forMonth+"-01" : "");
-  return d ? d.slice(0,7) : "";
-}
-function rowSortKey(row){
-  return row.expectedDate || (row.forMonth ? row.forMonth+"-01" : "") || row.submittedDate || "0000-00-00";
-}
-function allMonths(){
-  const set = new Set(data.knownMonths||[]);
-  (data.ledger||[]).forEach(r=>{ const m = rowMonth(r); if(m) set.add(m); });
-  return Array.from(set).sort();
-}
-
-/* ============ MANUAL ROW ORDER ============ */
-// Rows are sorted by a numeric `order` field the user controls with ▲▼ buttons.
-// Rows belonging to the same contractor cluster always share one order value so
-// they stay together as a block; CATEGORY_RANK breaks the tie between them.
-const CATEGORY_RANK = { contractorGross:0, contractorProfit:1, contractorPayout:2 };
-function unitKey(row){ return row.clusterId || row.id; }
-function ensureOrder(){
-  if(data.ledger.every(r=> typeof r.order === 'number')) return;
-  const sorted = data.ledger.slice().sort((a,b)=> rowSortKey(a).localeCompare(rowSortKey(b)));
-  const seen = {};
-  let counter = 1;
-  sorted.forEach(r=>{
-    const key = unitKey(r);
-    if(!(key in seen)) seen[key] = counter++;
-    if(typeof r.order !== 'number') r.order = seen[key];
-  });
-}
-function nextOrder(){
-  let max = 0;
-  data.ledger.forEach(r=>{ if(typeof r.order==='number' && r.order>max) max=r.order; });
-  return max+1;
-}
-function moveUnit(key, direction){
-  const sortedAll = computeBalances(); // sorted by order + category tie-break
-  const display = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
-  const units = []; const seen = new Set();
-  display.forEach(r=>{ const k=unitKey(r); if(!seen.has(k)){ seen.add(k); units.push(k); } });
-  const idx = units.indexOf(key);
-  if(idx===-1) return;
-  const swapWith = direction==='up' ? idx-1 : idx+1;
-  if(swapWith<0 || swapWith>=units.length) return;
-  const keyA = units[idx], keyB = units[swapWith];
-  const orderA = data.ledger.find(r=>unitKey(r)===keyA).order;
-  const orderB = data.ledger.find(r=>unitKey(r)===keyB).order;
-  data.ledger.forEach(r=>{
-    if(unitKey(r)===keyA) r.order = orderB;
-    else if(unitKey(r)===keyB) r.order = orderA;
-  });
-  renderAll();
-}
-
-// Drag-and-drop reordering: places the dragged unit's order value between its new
-// neighbors (a fractional value), so no other row's order needs to change at all.
-function dropUnit(dragKey, targetKey, before){
-  if(dragKey===targetKey) return;
-  const sortedAll = computeBalances();
-  const display = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
-  const units = []; const seen = new Set();
-  display.forEach(r=>{ const k=unitKey(r); if(!seen.has(k)){ seen.add(k); units.push(k); } });
-  const withoutDrag = units.filter(k=>k!==dragKey);
-  const targetIdx = withoutDrag.indexOf(targetKey);
-  if(targetIdx===-1) return;
-  const prevKey = before ? withoutDrag[targetIdx-1] : withoutDrag[targetIdx];
-  const nextKey = before ? withoutDrag[targetIdx] : withoutDrag[targetIdx+1];
-  const getOrder = k => { if(!k) return null; const row = data.ledger.find(r=>unitKey(r)===k); return row ? row.order : null; };
-  const prevOrder = getOrder(prevKey);
-  const nextOrder = getOrder(nextKey);
-  let newOrder;
-  if(prevOrder!=null && nextOrder!=null) newOrder = (prevOrder+nextOrder)/2;
-  else if(prevOrder!=null) newOrder = prevOrder + 1;
-  else if(nextOrder!=null) newOrder = nextOrder - 1;
-  else newOrder = 1;
-  data.ledger.forEach(r=>{ if(unitKey(r)===dragKey) r.order = newOrder; });
-  renderAll();
-}
-
-let dragKey = null;
-function attachDragHandlers(){
-  document.querySelectorAll('#ledgerBody tr[data-key]').forEach(tr=>{
-    const handle = tr.querySelector('.dragHandle');
-    if(handle){
-      handle.addEventListener('mousedown', ()=>{ tr.setAttribute('draggable','true'); });
-      handle.addEventListener('touchstart', ()=>{ tr.setAttribute('draggable','true'); }, {passive:true});
+    "adi": {
+      "name": "עדי"
+    },
+    "shaili": {
+      "name": "שי לי"
+    },
+    "dana": {
+      "name": "דנה"
+    },
+    "ofir": {
+      "name": "אופיר"
+    },
+    "noam_eliyahu": {
+      "name": "נועם אליהו"
     }
-    tr.addEventListener('dragstart', e=>{
-      dragKey = tr.dataset.key;
-      e.dataTransfer.effectAllowed = 'move';
-      try{ e.dataTransfer.setData('text/plain', dragKey); }catch(err){}
-      tr.classList.add('dragging');
-    });
-    tr.addEventListener('dragend', ()=>{
-      tr.classList.remove('dragging');
-      tr.setAttribute('draggable','false');
-      document.querySelectorAll('#ledgerBody tr').forEach(r=>r.classList.remove('dragOverTop','dragOverBottom'));
-    });
-    tr.addEventListener('dragover', e=>{
-      e.preventDefault();
-      const rect = tr.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height/2;
-      tr.classList.toggle('dragOverTop', before);
-      tr.classList.toggle('dragOverBottom', !before);
-    });
-    tr.addEventListener('dragleave', ()=>{ tr.classList.remove('dragOverTop','dragOverBottom'); });
-    tr.addEventListener('drop', e=>{
-      e.preventDefault();
-      const rect = tr.getBoundingClientRect();
-      const before = (e.clientY - rect.top) < rect.height/2;
-      tr.classList.remove('dragOverTop','dragOverBottom');
-      if(dragKey) dropUnit(dragKey, tr.dataset.key, before);
-      dragKey = null;
-    });
-  });
-}
-
-/* ============ CONTRACTOR CLUSTER LOGIC ============ */
-function recalcContractorCluster(clusterId){
-  const rows = data.ledger.filter(r=>r.clusterId===clusterId);
-  const gross = rows.find(r=>r.category==='contractorGross');
-  const profit = rows.find(r=>r.category==='contractorProfit');
-  const payout = rows.find(r=>r.category==='contractorPayout');
-  if(!gross) return;
-  const c = data.contractors[gross._contractorId];
-  if(!c) return;
-  if(gross.submittedDate) gross.expectedDate = addDays(gross.submittedDate, c.paymentTermsDays);
-  const full = Number(gross.income)||0;
-  const commission = Math.round(full*(Number(c.commissionPercent)||0)/100*100)/100;
-  const payoutAmt = Math.round((full-commission)*100)/100;
-  if(profit){
-    profit.profitAmount = commission;
-    profit.expectedDate = gross.expectedDate;
-    profit.submittedDate = gross.submittedDate;
-    profit.entity = c.name+" - אטלס";
-    profit.project = gross.project;
-    profit.responsible = gross.responsible;
-  }
-  if(payout){
-    payout.expense = payoutAmt;
-    payout.expectedDate = gross.expectedDate;
-    payout.submittedDate = gross.submittedDate;
-    payout.entity = "אטלס - "+c.name;
-    payout.project = gross.project;
-    payout.responsible = gross.responsible;
-  }
-}
-function recalcAllClusters(){
-  const clusterIds = new Set((data.ledger||[]).map(r=>r.clusterId).filter(Boolean));
-  clusterIds.forEach(recalcContractorCluster);
-}
-
-/* ============ RUNNING BALANCE ============ */
-function computeBalances(){
-  ensureOrder();
-  const sorted = data.ledger.slice().sort((a,b)=>{
-    const oa=(a.order||0), ob=(b.order||0);
-    if(oa!==ob) return oa-ob;
-    return (CATEGORY_RANK[a.category]||0)-(CATEGORY_RANK[b.category]||0);
-  });
-  let bal = Number(data.openingBalance)||0;
-  sorted.forEach(r=>{
-    if(r.affectsBalance!==false){
-      bal += (Number(r.income)||0) - (Number(r.expense)||0);
+  },
+  "contractors": {
+    "erez": {
+      "name": "ארז",
+      "paymentTermsDays": 45,
+      "commissionPercent": 12
+    },
+    "marit": {
+      "name": "מרית",
+      "paymentTermsDays": 45,
+      "commissionPercent": 15
+    },
+    "emil": {
+      "name": "אמיל",
+      "paymentTermsDays": 45,
+      "commissionPercent": 10
+    },
+    "dima": {
+      "name": "דימה",
+      "paymentTermsDays": 45,
+      "commissionPercent": 15
+    },
+    "noam": {
+      "name": "נועם שלום",
+      "paymentTermsDays": 45,
+      "commissionPercent": 15
+    },
+    "yarden": {
+      "name": "ירדן",
+      "paymentTermsDays": 45,
+      "commissionPercent": 12
+    },
+    "rafael": {
+      "name": "רפאל",
+      "paymentTermsDays": 45,
+      "commissionPercent": 15
+    },
+    "alon": {
+      "name": "אלון",
+      "paymentTermsDays": 45,
+      "commissionPercent": null
     }
-    r._runningBalance = bal;
-  });
-  return sorted;
-}
-
-/* ============ QUICK ADD ============ */
-function quickAddSalary(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'salary', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
-  renderAll();
-}
-function quickAddPension(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'pension', entity:'', project:'קרן פנסיה', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
-  renderAll();
-}
-function quickAddCredit(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'credit', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
-  renderAll();
-}
-function quickAddStatutory(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'statutory', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'', _statutoryCode:'' });
-  renderAll();
-}
-function quickAddProjectIncome(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'projectIncome', entity:'', project:'', responsible:'', clientId:'', branchId:'', invoiceNumber:'', submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, receiptIssued:false, docNumbers:{}, notes:'' });
-  renderAll();
-}
-function quickAddContractor(){
-  const clusterId = uid('cl');
-  const base = { clusterId, order:nextOrder(), submittedDate:'', expectedDate:'', forMonth:'', project:'', responsible:'', notes:'', docNumbers:{} };
-  data.ledger.push(Object.assign({id:uid('l'),category:'contractorGross', entity:'', income:0, expense:0, affectsBalance:true, _contractorId:''}, base));
-  data.ledger.push(Object.assign({id:uid('l'),category:'contractorProfit', entity:'', income:0, expense:0, affectsBalance:false, profitAmount:0}, base));
-  data.ledger.push(Object.assign({id:uid('l'),category:'contractorPayout', entity:'', income:0, expense:0, affectsBalance:true}, base));
-  renderAll();
-}
-function quickAddOther(){
-  data.ledger.push({ id:uid('l'), order:nextOrder(), category:'other', entity:'', project:'', responsible:'', forMonth:activeMonth==='ALL'?'':activeMonth, submittedDate:'', expectedDate:'', income:0, expense:0, affectsBalance:true, paid:false, docNumbers:{}, notes:'' });
-  renderAll();
-}
-
-/* ============ PAYSLIP (PDF) IMPORT ============ */
-// Reconstructs each page's text into lines (grouped by y, ordered right-to-left by x)
-// so Hebrew reading order is correct, then looks for known anchor patterns:
-// employee ID (9 digits) + name, "שכר נטו" (net salary) amount, and the pay month.
-async function extractPayslipPages(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-  const results = [];
-  for(let p=1; p<=pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    const items = content.items.map(it => ({ text: it.str, x: it.transform[4], y: it.transform[5] })).filter(it=>it.text && it.text.trim()!=='');
-    // group into lines by y (2px tolerance), each line's items ordered right-to-left (x descending)
-    const lines = [];
-    items.sort((a,b)=> b.y - a.y);
-    items.forEach(it=>{
-      let line = lines.find(l => Math.abs(l.y - it.y) < 2.5);
-      if(!line){ line = {y: it.y, items: []}; lines.push(line); }
-      line.items.push(it);
-    });
-    lines.forEach(l => l.items.sort((a,b)=> b.x - a.x));
-
-    let month='', firstName='', lastName='', netAmount=null;
-    lines.forEach(l=>{
-      const texts = l.items.map(it=>it.text.trim());
-      const joined = texts.join(' ');
-      const monthMatch = joined.match(/(\d{1,2})\/(\d{4})/);
-      if(monthMatch && !month) month = monthMatch[2] + '-' + monthMatch[1].padStart(2,'0');
-
-      const idIdx = texts.findIndex(t => /^\d{9}$/.test(t));
-      if(idIdx >= 2 && !firstName){
-        const prev1 = texts[idIdx-1], prev2 = texts[idIdx-2];
-        const isHeb = s => /[\u0590-\u05FF]/.test(s) && !/^\d+$/.test(s);
-        if(isHeb(prev1) && isHeb(prev2)){ firstName = prev1; lastName = prev2; }
+  },
+  "clients": {
+    "mod": {
+      "name": "משרד הביטחון",
+      "branches": {
+        "south": "ענף דרום",
+        "north": "ענף צפון",
+        "seam": "קו התפר",
+        "planning": "תו\"ב",
+        "b561": "561",
+        "b562": "562",
+        "b563": "563",
+        "b564": "564",
+        "comms": "ענף תקשוב",
+        "negev": "אט\"ל לנגב"
       }
-      if(joined.includes('נטו') && joined.includes('לתשלום') && netAmount===null){
-        const numMatch = texts.find(t => /^[\d,]+\.\d{2}$/.test(t));
-        if(numMatch) netAmount = Number(numMatch.replace(/,/g,''));
-      }
-    });
-    results.push({ page:p, month, firstName, lastName, netAmount });
-  }
-  return results;
-}
-
-// Some employees appear on official documents (payslips etc.) under a formal
-// name that differs from the short name used in this app. Map those here.
-const NICKNAME_ALIASES = {
-  'ברי': ['ברוך', 'ברוך בארי', 'בארי'],
-  'שי לי': ['שילי', 'שי־לי']
-};
-function matchEmployeeId(firstName, lastName){
-  const norm = s => (s||'').replace(/[־\-\s]/g,'');
-  const fn = norm(firstName);
-  if(!fn) return '';
-  for(const id in data.employees){
-    const empName = norm(data.employees[id].name);
-    if(empName.includes(fn) || fn.includes(empName)) return id;
-  }
-  for(const id in data.employees){
-    const empName = data.employees[id].name;
-    const aliases = NICKNAME_ALIASES[empName] || [];
-    if(aliases.some(a => norm(a)===fn || fn.includes(norm(a)) || norm(a).includes(fn))) return id;
-  }
-  return '';
-}
-
-async function handlePayslipUpload(ev){
-  const file = ev.target.files[0];
-  if(!file) return;
-  setGhStatus('קורא את קובץ התלושים...');
-  try{
-    const rows = await extractPayslipPages(file);
-    showPayslipReview(rows);
-    setGhStatus('');
-  }catch(err){
-    setGhStatus('שגיאה בקריאת ה-PDF: '+err.message, true);
-  }
-  ev.target.value = '';
-}
-
-function showPayslipReview(rows){
-  const months = rows.map(r=>r.month).filter(Boolean);
-  const commonMonth = months.length ? months.sort((a,b)=>
-    months.filter(v=>v===a).length - months.filter(v=>v===b).length).pop() : (activeMonth==='ALL'?'':activeMonth);
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modalOverlay';
-  overlay.id = 'payslipModal';
-  overlay.innerHTML = `
-    <div class="modalBox">
-      <h2>ייבוא תלושי שכר</h2>
-      <div style="margin-bottom:12px;font-size:13px;">
-        חודש: <input type="text" id="payslipMonth" value="${commonMonth}" style="width:90px;" placeholder="YYYY-MM">
-        <span style="color:var(--muted);font-size:12px;margin-right:10px;">בדוק שכל שורה משויכת לעובד הנכון ושהסכום תקין לפני הייבוא.</span>
-      </div>
-      <table>
-        <thead><tr><th>עמוד</th><th>שם שזוהה</th><th>עובד</th><th>נטו לתשלום</th><th>ייבא?</th></tr></thead>
-        <tbody id="payslipRows">
-          ${rows.map((r,i)=>{
-            const matchId = matchEmployeeId(r.firstName, r.lastName);
-            return `<tr data-idx="${i}">
-              <td>${r.page}</td>
-              <td>${(r.firstName||'')+' '+(r.lastName||'') || '<span style="color:var(--expense)">לא זוהה</span>'}</td>
-              <td><select data-field="emp">${optionsHtmlLocal(data.employees, matchId)}</select></td>
-              <td><input type="text" data-field="amount" value="${r.netAmount!==null?r.netAmount.toFixed(2):''}" style="width:90px;direction:ltr;text-align:left;"></td>
-              <td style="text-align:center;"><input type="checkbox" data-field="include" ${matchId && r.netAmount!==null ? 'checked' : ''}></td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-      <div class="modalActions">
-        <button class="ghost" id="payslipCancel">ביטול</button>
-        <button class="primary" id="payslipConfirm">ייבא לדוח</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  document.getElementById('payslipCancel').addEventListener('click', ()=> overlay.remove());
-  document.getElementById('payslipConfirm').addEventListener('click', ()=>{
-    const month = document.getElementById('payslipMonth').value.trim();
-    if(!/^\d{4}-\d{2}$/.test(month)){ alert('פורמט חודש לא תקין (נדרש YYYY-MM)'); return; }
-    document.querySelectorAll('#payslipRows tr').forEach(tr=>{
-      const include = tr.querySelector('[data-field="include"]').checked;
-      if(!include) return;
-      const empId = tr.querySelector('[data-field="emp"]').value;
-      const amount = Number(tr.querySelector('[data-field="amount"]').value.replace(/,/g,'')) || 0;
-      if(!empId || !amount) return;
-      const empName = data.employees[empId].name;
-      let existing = data.ledger.find(r=> r.category==='salary' && r.entity===empName && r.forMonth===month);
-      if(existing){ existing.income = 0; existing.expense = amount; }
-      else{
-        data.ledger.push({ id:uid('l'), order:nextOrder(), category:'salary', entity:empName, project:'', responsible:'', forMonth:month, submittedDate:'', expectedDate:'', income:0, expense:amount, affectsBalance:true, paid:false, docNumbers:{}, notes:'יובא מתלוש שכר' });
-      }
-    });
-    overlay.remove();
-    if(!data.knownMonths.includes(month)) data.knownMonths.push(month);
-    activeMonth = month;
-    renderAll();
-  });
-}
-
-function renderQuickAdd(){
-  document.getElementById('quickAdd').innerHTML = `
-    <button class="small" onclick="quickAddSalary()">+ משכורת</button>
-    <button class="small" onclick="quickAddPension()">+ פנסיה</button>
-    <button class="small" onclick="quickAddCredit()">+ אשראי/בנק</button>
-    <button class="small" onclick="quickAddStatutory()">+ סטטוטורי</button>
-    <button class="small" onclick="quickAddContractor()">+ חשבון קבלן (3 שורות)</button>
-    <button class="small" onclick="quickAddProjectIncome()">+ הכנסת פרויקט</button>
-    <button class="small" onclick="quickAddOther()">+ שורה חופשית</button>
-    <label class="small fileBtn" style="cursor:pointer;">ייבוא תלושי שכר (PDF)<input type="file" id="payslipInput" accept="application/pdf" style="display:none;"></label>
-  `;
-  document.getElementById('payslipInput').addEventListener('change', handlePayslipUpload);
-}
-
-/* ============ DASHBOARD ============ */
-function renderDashboard(sortedAll){
-  const m = activeMonth;
-  const rowsInMonth = sortedAll.filter(r=> m==='ALL' ? true : rowMonth(r)===m);
-  let income=0, expense=0, commission=0;
-  rowsInMonth.forEach(r=>{
-    income += Number(r.income)||0;
-    expense += Number(r.expense)||0;
-    if(r.category==='contractorProfit') commission += Number(r.profitAmount)||0;
-  });
-  const net = income-expense;
-  const lastBal = rowsInMonth.length ? rowsInMonth[rowsInMonth.length-1]._runningBalance : (Number(data.openingBalance)||0);
-
-  document.getElementById('dashboard').innerHTML = `
-    <div class="card income"><div class="label">הכנסות (${monthLabel(m)})</div><div class="value">${fmtMoney(income)}</div></div>
-    <div class="card expense"><div class="label">הוצאות ותשלומים</div><div class="value">${fmtMoney(expense)}</div></div>
-    <div class="card net"><div class="label">נטו לתקופה</div><div class="value">${fmtMoney(net)}</div></div>
-    <div class="card commission"><div class="label">רווח עמלות קבלנים</div><div class="value">${fmtMoney(commission)}</div></div>
-    <div class="card balance"><div class="label">יתרת עו"ש (סוף תקופה)</div><div class="value">${fmtMoney(lastBal)}</div></div>
-  `;
-
-  const byClient={}, byResp={};
-  rowsInMonth.filter(r=>r.category==='projectIncome').forEach(r=>{
-    const cName = (data.clients[r.clientId]||{}).name || r.entity || 'ללא לקוח';
-    byClient[cName] = (byClient[cName]||0) + (Number(r.income)||0);
-  });
-  rowsInMonth.forEach(r=>{
-    if(!r.responsible) return;
-    byResp[r.responsible] = (byResp[r.responsible]||0) + (Number(r.income)||0);
-  });
-  function rows(obj){
-    const e = Object.entries(obj).filter(([k,v])=>v).sort((a,b)=>b[1]-a[1]);
-    if(!e.length) return '<div class="empty-hint">אין נתונים לתקופה זו</div>';
-    return e.map(([k,v])=>`<div class="breakdown-row"><span>${k}</span><span class="amt">${fmtMoney(v)}</span></div>`).join('');
-  }
-  document.getElementById('breakdowns').innerHTML = `
-    <div class="breakdown-box"><h3>הכנסות לפי לקוח</h3>${rows(byClient)}</div>
-    <div class="breakdown-box"><h3>הכנסות לפי אחראי</h3>${rows(byResp)}</div>
-  `;
-}
-
-/* ============ MONTH NAV ============ */
-function renderMonthNav(){
-  const months = allMonths();
-  const nav = document.getElementById('monthNav');
-  nav.innerHTML = '';
-  const allBtn = document.createElement('button');
-  allBtn.className = 'month'+(activeMonth==='ALL'?' active':'');
-  allBtn.textContent = 'כל התקופה';
-  allBtn.onclick = ()=>{ activeMonth='ALL'; renderAll(); };
-  nav.appendChild(allBtn);
-  months.forEach(m=>{
-    const b = document.createElement('button');
-    b.className = 'month'+(m===activeMonth?' active':'');
-    b.textContent = monthLabel(m);
-    b.onclick = ()=>{ activeMonth = m; renderAll(); };
-    nav.appendChild(b);
-  });
-  const addBtn = document.createElement('button');
-  addBtn.className = 'month addMonth';
-  addBtn.textContent = '+ הוסף חודש';
-  addBtn.onclick = ()=>{
-    const val = prompt('הוסף חודש בפורמט YYYY-MM (למשל 2026-10):');
-    if(val && /^\d{4}-\d{2}$/.test(val)){
-      if(!data.knownMonths.includes(val)) data.knownMonths.push(val);
-      activeMonth = val; renderAll();
-    } else if(val){ alert('פורמט לא תקין. נדרש YYYY-MM'); }
-  };
-  nav.appendChild(addBtn);
-}
-
-/* ============ LEDGER TABLE ============ */
-function inp(row, field, type, extra){
-  extra = extra || '';
-  const val = row[field];
-  if(type==='checkbox') return `<input type="checkbox" data-id="${row.id}" data-field="${field}" ${val?'checked':''}>`;
-  return `<input type="${type}" data-id="${row.id}" data-field="${field}" value="${val!==undefined&&val!==null?val:''}" ${extra}>`;
-}
-function moneyInp(row, field){
-  const num = Number(row[field])||0;
-  const formatted = num.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
-  return `<input type="text" inputmode="decimal" data-id="${row.id}" data-field="${field}" data-money="1" value="${formatted}" style="text-align:left;direction:ltr;">`;
-}
-function docInp(row, key, ph){
-  const val = (row.docNumbers && row.docNumbers[key]) || '';
-  return `<input type="text" placeholder="${ph}" data-id="${row.id}" data-doc="${key}" value="${val}">`;
-}
-function catSelect(row){
-  let opts = '';
-  for(const k in CAT_LABELS){ opts += `<option value="${k}" ${row.category===k?'selected':''}>${CAT_LABELS[k]}</option>`; }
-  const disabled = row.clusterId ? 'disabled title="חלק ממקבץ קבלן - לא ניתן לשנות סוג"' : '';
-  return `<select data-id="${row.id}" data-field="category" ${disabled}>${opts}</select>`;
-}
-
-function renderLedger(){
-  const sortedAll = computeBalances();
-  renderDashboard(sortedAll);
-  const display = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
-  const body = document.getElementById('ledgerBody');
-  if(!display.length){
-    body.innerHTML = '<tr><td colspan="15" class="empty-hint">אין רשומות להצגה. הוסף שורה למעלה.</td></tr>';
-    return;
-  }
-  body.innerHTML = display.map(r=>{
-    const balDisplay = r.affectsBalance===false
-      ? `<span class="balCell noimpact">${fmtMoney(r._runningBalance)}</span>`
-      : `<span class="balCell">${fmtMoney(r._runningBalance)}</span>`;
-    let extraCol = '';
-    if(r.category==='contractorGross'){
-      extraCol = `<select data-id="${r.id}" data-field="_contractorId">${optionsHtmlLocal(data.contractors, r._contractorId)}</select>`;
-    } else if(r.category==='projectIncome'){
-      const client = data.clients[r.clientId];
-      const branchOpts = client ? Object.fromEntries(Object.entries(client.branches).map(([k,v])=>[k,{name:v}])) : {};
-      extraCol = `<select data-id="${r.id}" data-field="clientId">${optionsHtmlLocal(data.clients, r.clientId)}</select>
-                  <select data-id="${r.id}" data-field="branchId">${optionsHtmlLocal(branchOpts, r.branchId)}</select>`;
-    } else if(r.category==='statutory'){
-      const codeOpts = Object.fromEntries(Object.entries(data.statutoryCodes).map(([k,v])=>[k,{name:v+' ('+k+')'}]));
-      extraCol = `<select data-id="${r.id}" data-field="_statutoryCode">${optionsHtmlLocal(codeOpts, r._statutoryCode)}</select>`;
     }
-    const profitCell = r.category==='contractorProfit'
-      ? `<span class="profitCell">${fmtMoney(r.profitAmount)}</span>`
-      : '';
-    const incomeCell = r.category==='contractorProfit' ? '' : moneyInp(r,'income');
-    const expenseCell = (r.category==='contractorProfit'||r.category==='contractorPayout') ? (r.category==='contractorPayout' ? `<span class="computed">${fmtMoney(r.expense)}</span>` : '') : moneyInp(r,'expense');
-    const paidField = (r.category==='projectIncome')
-      ? `<select data-id="${r.id}" data-field="paid2"><option value="expected" ${!r.paid?'selected':''}>צפוי</option><option value="received" ${r.paid?'selected':''}>התקבל</option></select>`
-      : inp(r,'paid','checkbox');
-    const entityCell = (r.category==='salary'||r.category==='pension') ? employeeSelect(r) : inp(r,'entity','text');
-    return `
-    <tr class="cat-${r.category}" draggable="false" data-key="${unitKey(r)}">
-      <td class="dragHandle" title="גרור לשינוי סדר">⠿</td>
-      <td>${catSelect(r)}${extraCol?'<div style="margin-top:2px">'+extraCol+'</div>':''}</td>
-      <td>${entityCell}</td>
-      <td>${inp(r,'project','text')}</td>
-      <td>${inp(r,'responsible','text',`list="empList"`)}</td>
-      <td>${inp(r,'submittedDate','date')}</td>
-      <td>${inp(r,'expectedDate','date')}</td>
-      <td>${incomeCell}</td>
-      <td>${expenseCell}</td>
-      <td>${profitCell}</td>
-      <td><div class="docCell">
-        ${docInp(r,'deal','חשבון עסקה')}
-        ${docInp(r,'taxReceipt','חשב. מס קבלה')}
-        ${docInp(r,'receipt','קבלה')}
-      </div></td>
-      <td>${paidField}</td>
-      <td>${inp(r,'notes','text')}</td>
-      <td class="rowActions">
-        <button class="moveRow" data-key="${unitKey(r)}" data-dir="up" title="הזז למעלה">▲</button>
-        <button class="moveRow" data-key="${unitKey(r)}" data-dir="down" title="הזז למטה">▼</button>
-        <button class="delRow" data-id="${r.id}">✕</button>
-      </td>
-      <td class="balCol">${balDisplay}</td>
-    </tr>`;
-  }).join('');
-  attachDragHandlers();
-}
-function optionsHtmlLocal(obj, selected){
-  let html = '<option value="">—</option>';
-  for(const id in obj){ html += `<option value="${id}" ${id===selected?'selected':''}>${obj[id].name||obj[id]}</option>`; }
-  return html;
-}
-function employeeSelect(row){
-  let html = '<option value="">— בחר עובד —</option>';
-  for(const id in data.employees){
-    const name = data.employees[id].name;
-    html += `<option value="${name}" ${row.entity===name?'selected':''}>${name}</option>`;
-  }
-  return `<select data-id="${row.id}" data-field="entity">${html}</select>`;
-}
-function renderEmpList(){
-  const names = [
-    ...Object.values(data.employees).map(e=>e.name),
-    ...Object.values(data.contractors).map(c=>c.name)
-  ];
-  document.getElementById('empList').innerHTML = names.map(n=>`<option value="${n}">`).join('');
-}
-
-/* ============ EVENTS ============ */
-function applyFieldFromInput(t, row){
-  if(t.dataset.doc){
-    row.docNumbers = row.docNumbers || {};
-    row.docNumbers[t.dataset.doc] = t.value;
-    return;
-  }
-  const field = t.dataset.field;
-  if(field==='paid2'){ row.paid = (t.value==='received'); }
-  else if(t.type==='checkbox'){ row[field] = t.checked; }
-  else if(t.dataset.money==='1'){
-    const cleaned = (t.value||'').replace(/,/g,'').trim();
-    row[field] = cleaned===''?0:Number(cleaned);
-  }
-  else if(t.type==='number'){ row[field] = t.value===''?0:Number(t.value); }
-  else { row[field] = t.value; }
-}
-
-// While typing: just update the data model, no re-render (keeps cursor/focus in place).
-document.addEventListener('input', e=>{
-  const t = e.target;
-  const id = t.dataset.id;
-  if(!id) return;
-  const row = data.ledger.find(r=>r.id===id);
-  if(!row) return;
-  applyFieldFromInput(t, row);
-});
-
-// On commit (blur, Enter, or a select/checkbox/date change): recalc + re-render.
-document.addEventListener('change', e=>{
-  const t = e.target;
-  const id = t.dataset.id;
-  if(!id) return;
-  const row = data.ledger.find(r=>r.id===id);
-  if(!row) return;
-  applyFieldFromInput(t, row);
-  if(t.dataset.field==='_contractorId'){
-    row.entity = (data.contractors[t.value]||{}).name || '';
-  }
-  if(row.category==='contractorGross' && row.clusterId){
-    recalcContractorCluster(row.clusterId);
-  }
-  renderAll();
-});
-
-document.addEventListener('click', e=>{
-  if(e.target.classList.contains('delRow')){
-    const id = e.target.dataset.id;
-    const row = data.ledger.find(r=>r.id===id);
-    if(row && row.clusterId){
-      if(!confirm('שורה זו חלק ממקבץ חשבון קבלן (3 שורות). למחוק את כל המקבץ?')) return;
-      data.ledger = data.ledger.filter(r=>r.clusterId!==row.clusterId);
-    } else {
-      data.ledger = data.ledger.filter(r=>r.id!==id);
+  },
+  "statutoryCodes": {
+    "2761": "מע\"מ",
+    "2760": "מס הכנסה",
+    "2762": "ניכויים מס הכנסה",
+    "38286": "ביטוח לאומי"
+  },
+  "knownMonths": [
+    "2026-01"
+  ],
+  "ledger": [
+    {
+      "category": "other",
+      "entity": "דניס עצמאי",
+      "project": "גבול מזרחי",
+      "responsible": "דניס",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-05",
+      "expense": 35400,
+      "docNumbers": {
+        "taxReceipt": "60016"
+      },
+      "order": 1,
+      "id": "l_54e3f0e",
+      "notes": "",
+      "submittedDate": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "entity": "תקשוב",
+      "project": "גדעונים",
+      "responsible": "דניס",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-06",
+      "income": 100359,
+      "docNumbers": {
+        "taxReceipt": "10014",
+        "receipt": "20021"
+      },
+      "notes": "עבור חודש (מקור): 10-12.24",
+      "order": 2,
+      "id": "l_f883b81",
+      "submittedDate": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "credit",
+      "entity": "כרטיס אשראי",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-07",
+      "expense": 11495.62,
+      "order": 3,
+      "id": "l_0cc79d6",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "דניס",
+      "responsible": "דניס",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 14998,
+      "order": 4,
+      "id": "l_9c550ce",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "ברי",
+      "responsible": "ברי",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 19430,
+      "order": 5,
+      "id": "l_0bfd17d",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "לודמילה",
+      "responsible": "לודמילה",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 3126,
+      "order": 6,
+      "id": "l_4a4986d",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "עדי",
+      "responsible": "עדי",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 9902,
+      "order": 7,
+      "id": "l_0f70f01",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "שי לי",
+      "responsible": "שי לי",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 4571,
+      "order": 8,
+      "id": "l_8e7bc4c",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "אופיר",
+      "responsible": "אופיר",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 1933,
+      "order": 9,
+      "id": "l_cb755f3",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "דנה",
+      "responsible": "דנה",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 4708,
+      "order": 10,
+      "id": "l_17e79ef",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "salary",
+      "entity": "נועם אליהו",
+      "responsible": "נועם אליהו",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 3777,
+      "notes": "עובדת לשעבר - כבר לא מועסקת",
+      "order": 11,
+      "id": "l_ce1feab",
+      "docNumbers": {},
+      "submittedDate": "",
+      "project": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "pension",
+      "entity": "קרן פנסיה",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-10",
+      "expense": 11195,
+      "notes": "סכום מרוכז מהמקור עבור: דניס, עדי, אופיר, ברי, דנה - לא מפוצל לפי עובד בקובץ המקורי",
+      "order": 12,
+      "id": "l_d6978e2",
+      "docNumbers": {},
+      "submittedDate": "",
+      "project": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_c8746b2",
+      "entity": "מרית",
+      "project": "ענף דרום",
+      "responsible": "מרית",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-11-23",
+      "expectedDate": "2026-01-11",
+      "income": 12449.472,
+      "_contractorId": "marit",
+      "order": 13,
+      "id": "l_26c1990",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_c8746b2",
+      "entity": "מרית - אטלס",
+      "project": "ענף דרום",
+      "responsible": "מרית",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-11-23",
+      "expectedDate": "2026-01-11",
+      "affectsBalance": false,
+      "profitAmount": 1867.42,
+      "order": 14,
+      "id": "l_effd15a",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_c8746b2",
+      "entity": "אטלס - מרית",
+      "project": "ענף דרום",
+      "responsible": "מרית",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-11-23",
+      "expectedDate": "2026-01-11",
+      "expense": 10582.0512,
+      "notes": "",
+      "order": 15,
+      "id": "l_92a72ca",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_c1667e7",
+      "entity": "ירדן",
+      "project": "מנהלת",
+      "responsible": "ירדן",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "income": 39506.4,
+      "_contractorId": "yarden",
+      "order": 16,
+      "id": "l_c15e84f",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_c1667e7",
+      "entity": "ירדן - אטלס",
+      "project": "מנהלת",
+      "responsible": "ירדן",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "affectsBalance": false,
+      "profitAmount": 4740.768,
+      "order": 17,
+      "id": "l_d33d7ba",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_c1667e7",
+      "entity": "אטלס - ירדן",
+      "project": "מנהלת",
+      "responsible": "ירדן",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "expense": 34765.632,
+      "notes": "",
+      "order": 18,
+      "id": "l_a747f73",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_182bb35",
+      "entity": "אמיל",
+      "project": "בינוי 561",
+      "responsible": "אמיל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "income": 68287.07,
+      "_contractorId": "emil",
+      "order": 19,
+      "id": "l_31989a4",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_182bb35",
+      "entity": "אמיל - אטלס",
+      "project": "בינוי 561",
+      "responsible": "אמיל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "affectsBalance": false,
+      "profitAmount": 6828.707,
+      "order": 20,
+      "id": "l_9afe450",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_182bb35",
+      "entity": "אטלס - אמיל",
+      "project": "בינוי 561",
+      "responsible": "אמיל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "expense": 61458.363,
+      "notes": "",
+      "order": 21,
+      "id": "l_c827513",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_8b71e2c",
+      "entity": "רפאל",
+      "project": "563",
+      "responsible": "רפאל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-02",
+      "expectedDate": "2026-01-16",
+      "income": 48382.8556,
+      "_contractorId": "rafael",
+      "order": 22,
+      "id": "l_b320db5",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_8b71e2c",
+      "entity": "רפאל - אטלס",
+      "project": "563",
+      "responsible": "רפאל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-02",
+      "expectedDate": "2026-01-16",
+      "affectsBalance": false,
+      "profitAmount": 7257.42834,
+      "order": 23,
+      "id": "l_b154b16",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_8b71e2c",
+      "entity": "אטלס - רפאל",
+      "project": "563",
+      "responsible": "רפאל",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-02",
+      "expectedDate": "2026-01-16",
+      "expense": 41125.42726,
+      "notes": "",
+      "order": 24,
+      "id": "l_a97ff26",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_bf3d7e9",
+      "entity": "דימה",
+      "project": "מחוז מרכז",
+      "responsible": "דימה",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "income": 21289.02,
+      "_contractorId": "dima",
+      "order": 25,
+      "id": "l_4670305",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_bf3d7e9",
+      "entity": "דימה - אטלס",
+      "project": "מחוז מרכז",
+      "responsible": "דימה",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "affectsBalance": false,
+      "profitAmount": 3193.353,
+      "order": 26,
+      "id": "l_7076abb",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_bf3d7e9",
+      "entity": "אטלס - דימה",
+      "project": "מחוז מרכז",
+      "responsible": "דימה",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "expense": 18095.667,
+      "notes": "",
+      "order": 27,
+      "id": "l_9a622ca",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorGross",
+      "clusterId": "cl_8dd042e",
+      "entity": "ארז",
+      "project": "קו התפר",
+      "responsible": "ארז",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "income": 60899.328,
+      "_contractorId": "erez",
+      "order": 28,
+      "id": "l_372b23d",
+      "docNumbers": {},
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "contractorProfit",
+      "clusterId": "cl_8dd042e",
+      "entity": "ארז - אטלס",
+      "project": "קו התפר",
+      "responsible": "ארז",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "affectsBalance": false,
+      "profitAmount": 7307.919,
+      "order": 29,
+      "id": "l_19e1576",
+      "docNumbers": {},
+      "notes": "",
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "contractorPayout",
+      "clusterId": "cl_8dd042e",
+      "entity": "אטלס - ארז",
+      "project": "קו התפר",
+      "responsible": "ארז",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "expense": 47644.40864,
+      "notes": "ניכוי נוסף של 5,947 מעבר לעמלת 12% הרגילה - אושר ע\"י דניס, לסמן לבדיקה",
+      "order": 30,
+      "id": "l_03f7b77",
+      "docNumbers": {},
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "clusterId": "cl_57a810b",
+      "entity": "אלון",
+      "project": "ענף דרום",
+      "responsible": "אלון",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "income": 65572.84,
+      "docNumbers": {
+        "deal": "40260",
+        "taxReceipt": "30151"
+      },
+      "notes": "קבלן חדש - חישוב עמלה לא אחיד, מוזן ידנית בכל פעם",
+      "order": 31,
+      "id": "l_3dfcddf",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "clusterId": "cl_57a810b",
+      "entity": "אלון - אטלס",
+      "project": "ענף דרום",
+      "responsible": "אלון",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "affectsBalance": false,
+      "profitAmount": 8888.84,
+      "notes": "עמלה בפועל (לא אחוז קבוע)",
+      "order": 32,
+      "id": "l_5ffd9f7",
+      "docNumbers": {},
+      "income": 0,
+      "expense": 0,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "clusterId": "cl_57a810b",
+      "entity": "אטלס - אלון",
+      "project": "ענף דרום",
+      "responsible": "אלון",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-08",
+      "expectedDate": "2026-01-22",
+      "expense": 56684,
+      "docNumbers": {
+        "taxReceipt": "30025"
+      },
+      "order": 33,
+      "id": "l_b4c185d",
+      "notes": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "משהב\"ט",
+      "project": "מחוז מרכז",
+      "responsible": "נועם שלום",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "income": 18545.4464,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40267",
+        "taxReceipt": "30149"
+      },
+      "notes": "לא נמצאה שורת עמלה/תשלום מקבילה במקור - ייתכן וטרם פוצל",
+      "order": 34,
+      "id": "l_87fb430",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "משהב\"ט",
+      "project": "אופק",
+      "responsible": "ברי",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-03",
+      "expectedDate": "2026-01-17",
+      "income": 48433.572,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40259",
+        "taxReceipt": "30150"
+      },
+      "order": 35,
+      "id": "l_07de27e",
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "משהב\"ט",
+      "project": "צפון",
+      "responsible": "עדי",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-10",
+      "expectedDate": "2026-01-24",
+      "income": 22325.364,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40263",
+        "taxReceipt": "30152"
+      },
+      "order": 36,
+      "id": "l_392db4a",
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "משהב\"ט",
+      "project": "צפון",
+      "responsible": "שי לי",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-10",
+      "expectedDate": "2026-01-24",
+      "income": 19178.6816,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40265",
+        "taxReceipt": "30152"
+      },
+      "order": 37,
+      "id": "l_457294e",
+      "notes": "",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "גשם",
+      "project": "דימונה מילוסלבסקי",
+      "responsible": "ברי",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-01",
+      "expectedDate": "2026-03-20",
+      "income": 22420,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40269",
+        "receipt": "20022"
+      },
+      "notes": "על חשבון דימונה גשם",
+      "order": 38,
+      "id": "l_217178b",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "projectIncome",
+      "entity": "גשם",
+      "project": "דימונה",
+      "responsible": "ברי",
+      "forMonth": "2026-01",
+      "submittedDate": "2025-12-31",
+      "expectedDate": "2026-04-20",
+      "income": 22420,
+      "paymentStatus": "expected",
+      "docNumbers": {
+        "deal": "40276",
+        "receipt": "20022"
+      },
+      "notes": "על חשבון דימונה גשם",
+      "order": 39,
+      "id": "l_342b042",
+      "expense": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "statutory",
+      "entity": "מס הכנסה",
+      "project": "מקדמות",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-15",
+      "expense": 45322,
+      "_statutoryCode": "2760",
+      "order": 40,
+      "id": "l_38c444a",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "statutory",
+      "entity": "מס הכנסה",
+      "project": "ניכויים",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-15",
+      "expense": 23570,
+      "_statutoryCode": "2762",
+      "order": 41,
+      "id": "l_eaa1740",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "statutory",
+      "entity": "ביטוח לאומי",
+      "project": "ניכויים",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-15",
+      "expense": 12226,
+      "_statutoryCode": "38286",
+      "order": 42,
+      "id": "l_0e77ccf",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "statutory",
+      "entity": "מע\"מ",
+      "project": "מע\"מ",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-15",
+      "expense": 35728,
+      "_statutoryCode": "2761",
+      "order": 43,
+      "id": "l_01027a5",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "entity": "פקדון",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-08",
+      "expense": 190.52,
+      "order": 44,
+      "id": "l_0f0a925",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "entity": "איזון",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-08",
+      "expense": 297.8,
+      "order": 45,
+      "id": "l_5ae5712",
+      "docNumbers": {},
+      "notes": "",
+      "submittedDate": "",
+      "project": "",
+      "responsible": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "entity": "ברי עצמאי",
+      "project": "אופק",
+      "responsible": "ברי",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-26",
+      "expense": 23600,
+      "docNumbers": {
+        "deal": "30081"
+      },
+      "order": 46,
+      "id": "l_87c1e8e",
+      "notes": "",
+      "submittedDate": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
+    },
+    {
+      "category": "other",
+      "entity": "דניס עצמאי",
+      "project": "גבול מזרחי",
+      "responsible": "דניס",
+      "forMonth": "2026-01",
+      "expectedDate": "2026-01-26",
+      "expense": 9440,
+      "docNumbers": {
+        "taxReceipt": "60017"
+      },
+      "order": 47,
+      "id": "l_fd1868f",
+      "notes": "",
+      "submittedDate": "",
+      "income": 0,
+      "affectsBalance": true,
+      "paid": false
     }
-    renderAll();
-  }
-  if(e.target.classList.contains('moveRow')){
-    moveUnit(e.target.dataset.key, e.target.dataset.dir);
-  }
-});
-
-/* ============ LOAD / SAVE ============ */
-document.getElementById('fileInput').addEventListener('change', function(ev){
-  const file = ev.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(){
-    try{
-      const parsed = JSON.parse(reader.result);
-      data = Object.assign(seedData(), parsed);
-      recalcAllClusters();
-      activeMonth = 'ALL';
-      renderAll();
-    }catch(err){ alert('שגיאה בקריאת הקובץ: '+err.message); }
-  };
-  reader.readAsText(file);
-});
-document.getElementById('saveBtn').addEventListener('click', function(){
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `atlas-cashflow-${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-/* ============ FIREBASE SYNC ============ */
-// Fully open Realtime Database — no auth/token needed for read or write.
-const FIREBASE_URL = 'https://atlas-cashflow-3b7aa-default-rtdb.europe-west1.firebasedatabase.app';
-const FIREBASE_NODE = 'atlasCashflow';
-
-function setGhStatus(msg, isError){
-  const el = document.getElementById('ghStatus');
-  if(!el) return;
-  el.textContent = msg;
-  el.style.color = isError ? 'var(--expense)' : 'var(--income)';
+  ]
 }
-
-async function firebaseAutoLoad(showStatus){
-  if(showStatus) setGhStatus('טוען נתונים...');
-  try{
-    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json?_=${Date.now()}`);
-    if(!res.ok) throw new Error('שגיאה '+res.status);
-    const parsed = await res.json();
-    if(parsed===null){
-      if(showStatus) setGhStatus('עדיין אין נתונים שמורים — זה מסך ברירת מחדל.');
-      return;
-    }
-    data = Object.assign(seedData(), parsed);
-    activeMonth = 'ALL';
-    renderAll();
-    if(showStatus) setGhStatus('עודכן ('+new Date().toLocaleTimeString('he-IL')+')');
-  }catch(err){
-    if(showStatus) setGhStatus('שגיאה בטעינה: '+err.message, true);
-  }
-}
-
-async function firebaseSave(){
-  setGhStatus('שומר...');
-  try{
-    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json`, {
-      method:'PUT',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(data)
-    });
-    if(!res.ok) throw new Error('שגיאה '+res.status);
-    setGhStatus('נשמר בהצלחה לכולם ('+new Date().toLocaleTimeString('he-IL')+')');
-  }catch(err){ setGhStatus('שגיאה בשמירה: '+err.message, true); }
-}
-
-document.getElementById('ghRefreshBtn').addEventListener('click', ()=>firebaseAutoLoad(true));
-document.getElementById('ghSaveBtn').addEventListener('click', firebaseSave);
-
-/* ============ MAIN RENDER ============ */
-function renderAll(){
-  recalcAllClusters();
-  renderMonthNav();
-  renderQuickAdd();
-  renderEmpList();
-  renderLedger();
-  document.getElementById('subHeader').textContent =
-    `מציג ${monthLabel(activeMonth)} · ${data.ledger.length} שורות ביומן · יתרת פתיחה ${fmtMoney(data.openingBalance)}`;
-}
-
-renderAll();
-firebaseAutoLoad(false);
-</script>
-</body>
-</html>
