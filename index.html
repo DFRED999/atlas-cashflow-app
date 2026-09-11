@@ -916,6 +916,7 @@ main{
   width:168px !important;
   max-height:calc(100vh - 125px) !important;
   overflow-y:auto !important;
+  overflow-x:hidden !important;
   z-index:120 !important;
   display:flex !important;
   flex-direction:column !important;
@@ -1556,6 +1557,109 @@ input[data-invoice-unlocked-v424="1"]{
   #projectDetailView table,#contractorDetailView table{font-size:11.5px !important;}
   #projectDetailView th,#projectDetailView td,#contractorDetailView th,#contractorDetailView td{padding:4px 5px !important;}
 }
+
+/* v818 — automatic highlight for the last movement entered in the main ledger */
+#ledgerBody tr.atlasLastMovementRow > td{
+  background:rgba(245,158,11,.13) !important;
+  border-top:2px solid rgba(234,88,12,.78) !important;
+  border-bottom:2px solid rgba(234,88,12,.78) !important;
+}
+#ledgerBody tr.atlasLastMovementRow > td:first-child{
+  border-right:2px solid rgba(234,88,12,.78) !important;
+}
+#ledgerBody tr.atlasLastMovementRow > td:last-child{
+  border-left:2px solid rgba(234,88,12,.78) !important;
+}
+#ledgerBody tr.atlasLastMovementRow{
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.12);
+}
+
+
+/* v819 — clearly visible last movement marker */
+#ledgerBody tr.atlasLastMovementRow > td{
+  background:rgba(249,115,22,.16) !important;
+  box-shadow:
+    inset 0 3px 0 rgba(234,88,12,.95),
+    inset 0 -3px 0 rgba(234,88,12,.95) !important;
+}
+#ledgerBody tr.atlasLastMovementRow > td:first-child{
+  box-shadow:
+    inset -3px 0 0 rgba(234,88,12,.95),
+    inset 0 3px 0 rgba(234,88,12,.95),
+    inset 0 -3px 0 rgba(234,88,12,.95) !important;
+}
+#ledgerBody tr.atlasLastMovementRow > td:last-child{
+  box-shadow:
+    inset 3px 0 0 rgba(234,88,12,.95),
+    inset 0 3px 0 rgba(234,88,12,.95),
+    inset 0 -3px 0 rgba(234,88,12,.95) !important;
+}
+
+
+/* v820 — main ledger: Tax Invoice + Receipt = 000 */
+#ledgerBody tr.atlasReceipt000Row > td{
+  background:rgba(239,68,68,.13) !important;
+}
+#ledgerBody tr.atlasReceipt000Row:hover > td{
+  background:rgba(239,68,68,.19) !important;
+}
+
+
+/* v821 — 000 highlight must override contractor row colors */
+#ledgerBody tr.atlasReceipt000Row > td,
+#ledgerBody tr.atlasReceipt000Row.yardenLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.erezLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.emilLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.maritLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.rafaelLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.dimaLedgerRow > td,
+#ledgerBody tr.atlasReceipt000Row.alonLedgerRow > td{
+  background:rgba(239,68,68,.16) !important;
+}
+
+
+/* v822 — direct-render 000 marker, deliberately stronger and independent of row palette */
+#ledgerBody tr.atlasReceipt000Row > td{
+  background:#fde8e8 !important;
+}
+#ledgerBody tr.atlasReceipt000Row > td:first-child{
+  border-right:3px solid rgba(220,38,38,.55) !important;
+}
+#ledgerBody tr.atlasReceipt000Row > td:last-child{
+  border-left:3px solid rgba(220,38,38,.55) !important;
+}
+#ledgerBody tr.atlasReceipt000Row{
+  outline:2px solid rgba(220,38,38,.25);
+  outline-offset:-2px;
+}
+
+
+/* v823 — DOM-verified 000 row */
+#ledgerBody tr.atlasReceipt000RowV823 > td{
+  background-color:#fde8e8 !important;
+}
+
+
+/* v824 — verified light-red marker for displayed Tax Invoice/Receipt = 000 */
+#ledgerBody tr.atlasReceipt000RowV823 > td{
+  background:#fce3e3 !important;
+}
+#ledgerBody tr.atlasReceipt000RowV823{
+  outline:2px solid rgba(220,38,38,.32) !important;
+  outline-offset:-2px !important;
+}
+
+
+/* v831 — final visual rule for exact 000 in main ledger */
+#ledgerBody input[value="000"]{
+  color:#c00000 !important;
+  -webkit-text-fill-color:#c00000 !important;
+  background:#ffe8e8 !important;
+  border:2px solid #e53935 !important;
+  font-weight:900 !important;
+}
+#contractorNav{overflow-x:hidden !important;}
+
 </style>
 
 <style id="p211SizingFix">
@@ -2909,6 +3013,27 @@ table tbody tr:hover > td{
   font-size:16px;
   margin-right:4px;
 }
+.atlasLastMovementBannerV841{
+  background:#eef6ff;
+  border:1px solid #b9d7f5;
+  border-radius:8px;
+  padding:8px 14px;
+  margin:8px 0 4px 0;
+  font-size:13.5px;
+  font-weight:700;
+  color:#0b4a8f;
+  text-align:center;
+}
+.atlasTodayDividerV842 td{
+  background:#fff7d6!important;
+  border-top:3px double #c9a227!important;
+  border-bottom:3px double #c9a227!important;
+  text-align:center!important;
+  font-weight:800;
+  color:#8a6d00;
+  padding:6px 0!important;
+  letter-spacing:.5px;
+}
 </style>
 <style>
 /* v608 — four summary cards below the compact heading */
@@ -3549,9 +3674,10 @@ table tbody tr:hover > td{
 
 </main>
 
-<footer class="appFooter">גרסה 401 · יומן רציף עם עו"ש מתגלגל · כל הנתונים נשמרים מקומית בקובץ JSON שאתה מוריד/טוען — שום דבר לא נשלח לשרת.</footer>
+<footer class="appFooter">גרסה 831 · ATLAS Cash Flow · הנתונים נשמרים מקומית בקובץ JSON.</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
 // globalHebrewCalendarDOMContentLoaded
 document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(()=>installGlobalHebrewDatePickers(document)));
 </script>
@@ -4556,6 +4682,11 @@ function syncDetailRowToLedger(row, contractorKey){
 
   Object.assign(gross, common);
   Object.assign(payout, common);
+  // v832 fix: common.docNumbers was a single shared object reference — mutating
+  // payout.docNumbers below was silently wiping gross.docNumbers (and vice versa)
+  // since Object.assign only copies the reference, not a clone. Clone per-row.
+  gross.docNumbers = {...common.docNumbers};
+  payout.docNumbers = {...common.docNumbers};
 
   const contractorDeductionAmountV814=Math.abs(Number(row.deductionAmount)||0);
   const contractorDeductionBasisV814=String(row.deductionBasis||'gross')==='preVat'?'preVat':'gross';
@@ -5538,7 +5669,7 @@ function renderContractorDetailPage(){
       <td class="computed" style="min-width:38px;">${(()=>{const ym=String(row.forMonth||row.workMonth||'');return /^\d{4}-\d{2}$/.test(ym)?ym.slice(5,7):'';})()}</td>
       <td title="${(getContractForRow(row, contractorKey).orderNumber||'')}"><select class="editableCell" data-cdfield="contractId" style="width:112px;min-width:112px;max-width:112px;font-size:11px;">${contractOptionsHtml(contractorKey, row.contractId)}</select></td>
       <td><input class="editableCell" type="text" data-cdfield="dealInvoice" value="${row.dealInvoice||''}" style="width:62px;min-width:62px;"></td>
-      <td><input class="editableCell" type="text" data-cdfield="receiptInvoice" value="${row.receiptInvoice||''}" style="width:72px;min-width:72px;"></td>
+      <td><input class="editableCell" type="text" data-cdfield="receiptInvoice" value="${row.receiptInvoice||''}" style="width:72px;min-width:72px;${String(row.receiptInvoice||'').trim()==='0'?'color:#c00000!important;background-color:#ffe8e8!important;border:2px solid #e53935!important;font-weight:900!important;':''}"></td>
       <td><input class="editableCell cdDateInput" type="text" inputmode="numeric" data-cdfield="submittedDate" value="${fmtDateIL(row.submittedDate||'')}" placeholder="dd/mm/yyyy" style="width:94px;min-width:94px;direction:ltr;text-align:center;"></td>
       <td><input class="editableCell cdDateInput" type="text" inputmode="numeric" data-cdfield="atlasPaidDate" value="${fmtDateIL(row.atlasPaidDate||'')}" placeholder="dd/mm/yyyy" style="width:94px;min-width:94px;direction:ltr;text-align:center;"></td>
       <td><input type="checkbox" data-cdfield="atlasPaid" ${row.atlasPaid?'checked':''}> <span class="contractorPaidLabel ${row.atlasPaid?'is-paid':'is-open'}">${row.atlasPaid?'שולם':'טרם שולם'}</span></td>
@@ -5570,7 +5701,7 @@ function renderContractorDetailPage(){
       </td>
       <td class="computed">${fmtMoney(vals.commission)}</td>
       <td class="computed contractorPayoutAmount ${row.emilPaid?'is-paid':'is-open'}">${fmtMoney(vals.paidToContractor)}</td>
-      <td><input class="editableCell" type="text" data-cdfield="contractorTaxReceipt" value="${row.contractorTaxReceipt||''}" style="width:82px;min-width:82px;"></td>
+      <td><input class="editableCell" type="text" data-cdfield="contractorTaxReceipt" value="${row.contractorTaxReceipt||''}" style="width:82px;min-width:82px;${String(row.contractorTaxReceipt||'').trim()==='0'?'color:#c00000!important;background-color:#ffe8e8!important;border:2px solid #e53935!important;font-weight:900!important;':''}"></td>
       <td><input class="editableCell cdDateInput" type="text" inputmode="numeric" data-cdfield="payoutCashflowDate" value="${fmtDateIL(row.payoutCashflowDate||row.receiptInvoiceDate||row.atlasPaidDate||'')}" placeholder="dd/mm/yyyy" style="width:94px;min-width:94px;direction:ltr;text-align:center;"></td>
       <td><input type="checkbox" data-cdfield="emilPaid" ${row.emilPaid?'checked':''}> <span class="contractorPaidLabel ${row.emilPaid?'is-paid':'is-open'}">${row.emilPaid?'שולם':'טרם שולם'}</span></td>
       <td><button class="delRow" data-delcd="${row.id}">✕</button></td>
@@ -5584,6 +5715,25 @@ function updateAvgHoursFooter(avgHours){
   if(el) el.textContent = 'ממוצע שעות לשורה המוצגת: ' + avgHours.toFixed(2);
 }
 
+// v834 — Simple, guaranteed-reliable "0" marker: colors the input field itself
+// red the instant its value is exactly "0", regardless of any sync/ledger logic.
+document.getElementById('contractorDetailBody').addEventListener('input', e=>{
+  const t=e.target;
+  if(!t || !['receiptInvoice','contractorTaxReceipt'].includes(t.dataset.cdfield)) return;
+  const is0 = String(t.value||'').trim()==='0';
+  if(is0){
+    t.style.setProperty('color','#c00000','important');
+    t.style.setProperty('background-color','#ffe8e8','important');
+    t.style.setProperty('border','2px solid #e53935','important');
+    t.style.setProperty('font-weight','900','important');
+  }else{
+    t.style.removeProperty('color');
+    t.style.removeProperty('background-color');
+    t.style.removeProperty('border');
+    t.style.removeProperty('font-weight');
+  }
+});
+
 document.getElementById('contractorDetailBody').addEventListener('input', e=>{
   const t=e.target;
   if(!t || !['receiptInvoice','contractorTaxReceipt'].includes(t.dataset.cdfield) || !String(t.value||'').trim()) return;
@@ -5593,13 +5743,21 @@ document.getElementById('contractorDetailBody').addEventListener('input', e=>{
   const row=rows.find(r=>r.id===tr.dataset.rowid);
   if(!row) return;
   maybeAutoContractorPaymentDates(row,t.dataset.cdfield,t.value);
+  row[t.dataset.cdfield] = t.value;
   if(t.dataset.cdfield==='receiptInvoice'){
+    row.atlasPaid = true;
     const box=tr.querySelector('[data-cdfield="atlasPaid"]'); if(box) box.checked=true;
     const date=tr.querySelector('[data-cdfield="atlasPaidDate"]'); if(date) date.value=fmtDateIL(row.atlasPaidDate||'');
   }else{
+    row.emilPaid = true;
     const box=tr.querySelector('[data-cdfield="emilPaid"]'); if(box) box.checked=true;
     const date=tr.querySelector('[data-cdfield="contractorPaidDate"]'); if(date) date.value=fmtDateIL(row.contractorPaidDate||'');
   }
+  // v833 fix: the checkbox visual state alone never updated row.atlasPaid/row.emilPaid
+  // (a JS-set .checked=true doesn't fire the checkbox's own change handler), so the
+  // ledger row was silently never created even though the UI looked "paid".
+  // Sync now so the main ledger reflects this immediately.
+  syncDetailRowToLedger(row, currentDetailContractorKey);
 },true);
 
 document.getElementById('contractorDetailBody').addEventListener('input', e=>{
@@ -5629,6 +5787,11 @@ document.getElementById('contractorDetailBody').addEventListener('input', e=>{
   }
   if(field==='receiptInvoice' || field==='contractorTaxReceipt'){
     maybeAutoContractorPaymentDates(row,field,t.value);
+    // v819: keep supplier invoice/receipt edits immediately in memory.
+    if(field==='contractorTaxReceipt' && currentDetailContractorKey==='erez'){
+      row.contractorTaxReceipt=String(t.value||'').trim();
+      if(row.contractorTaxReceipt) row.emilPaid=true;
+    }
   }
 });
 document.getElementById('contractorDetailBody').addEventListener('change', e=>{
@@ -5676,6 +5839,18 @@ document.getElementById('contractorDetailBody').addEventListener('change', e=>{
     maybeAutoContractorPaymentDates(row,field,t.value);
   }
   syncDetailRowToLedger(row, currentDetailContractorKey);
+
+  // v819: a newly recorded Atlas receipt/payment or supplier payment becomes
+  // the new "last movement" in the main ledger.
+  if((field==='receiptInvoice' && String(row.receiptInvoice||'').trim()) ||
+     (field==='atlasPaid' && row.atlasPaid)){
+    atlasMarkLastBySourceV819({sourceDetailRowId:row.id, category:'contractorGross'});
+  }
+  if((field==='contractorTaxReceipt' && String(row.contractorTaxReceipt||'').trim()) ||
+     (field==='emilPaid' && row.emilPaid)){
+    atlasMarkLastBySourceV819({sourceDetailRowId:row.id, category:'contractorPayout'});
+  }
+
   firebaseSave();
   renderContractorDetailPage(); requestAnimationFrame(()=>ensureContractorOrderEndCell());
 });
@@ -8794,6 +8969,236 @@ function normalizeMonthInput(raw){
   return null;
 }
 
+
+/* v818 — Last movement marker.
+   Initial anchor: Dana / document 30207.
+   Afterwards the marker follows the newest payment/receipt actually entered in the site. */
+function atlasDocValuesV818(r){
+  const d=(r&&r.docNumbers)||{};
+  return [d.deal,d.taxInvoice,d.taxReceipt,d.receipt,r&&r.invoiceNumber]
+    .map(v=>String(v||'').trim()).filter(Boolean);
+}
+function atlasSeedLastMovementV818(){
+  data._atlasLastMovementV818 = data._atlasLastMovementV818 || {};
+  if(data._atlasLastMovementV818.ledgerId &&
+     (data.ledger||[]).some(r=>String(r.id)===String(data._atlasLastMovementV818.ledgerId))) return;
+
+  const seed=(data.ledger||[]).find(r=>{
+    const who=(String(r.entity||'')+' '+String(r.responsible||'')+' '+String(r.notes||''));
+    return who.includes('דנה') && atlasDocValuesV818(r).includes('30207');
+  });
+  if(seed){
+    data._atlasLastMovementV818={
+      ledgerId:seed.id,
+      sourceProjectRowId:seed._sourceProjectRowId||'',
+      sourceDetailRowId:seed._sourceDetailRowId||'',
+      markedAt:new Date().toISOString(),
+      seedDocument:'30207'
+    };
+  }
+}
+function atlasMarkLastMovementV818(row){
+  if(!row) return;
+  data._atlasLastMovementV818={
+    ledgerId:row.id||'',
+    sourceProjectRowId:row._sourceProjectRowId||'',
+    sourceDetailRowId:row._sourceDetailRowId||'',
+    category:row.category||'',
+    markedAt:new Date().toISOString()
+  };
+}
+function atlasIsLastMovementV818(r){
+  const m=data._atlasLastMovementV818||{};
+  if(m.ledgerId && String(m.ledgerId)===String(r.id||'')) return true;
+  if(m.sourceProjectRowId && String(m.sourceProjectRowId)===String(r._sourceProjectRowId||'') &&
+     (!m.category || String(m.category)===String(r.category||''))) return true;
+  if(m.sourceDetailRowId && String(m.sourceDetailRowId)===String(r._sourceDetailRowId||'') &&
+     (!m.category || String(m.category)===String(r.category||''))) return true;
+  return false;
+}
+
+
+/* v819 — robust resolver/persistence for the last movement marker */
+function atlasLastMovementMarkerV819(){
+  const m=data._atlasLastMovementV819 || data._atlasLastMovementV818 || {};
+  return m;
+}
+function atlasResolveLastMovementV819(){
+  let m=atlasLastMovementMarkerV819();
+
+  const findByMarker=()=>{
+    if(m.ledgerId){
+      const x=(data.ledger||[]).find(r=>String(r.id||'')===String(m.ledgerId));
+      if(x) return x;
+    }
+    if(m.sourceProjectRowId){
+      const x=(data.ledger||[]).find(r=>
+        String(r._sourceProjectRowId||'')===String(m.sourceProjectRowId) &&
+        (!m.category || String(r.category||'')===String(m.category))
+      );
+      if(x) return x;
+    }
+    if(m.sourceDetailRowId){
+      const x=(data.ledger||[]).find(r=>
+        String(r._sourceDetailRowId||'')===String(m.sourceDetailRowId) &&
+        (!m.category || String(r.category||'')===String(m.category))
+      );
+      if(x) return x;
+    }
+    return null;
+  };
+
+  let row=findByMarker();
+  if(row) return row;
+
+  // Initial fallback requested by Denis: Dana / 30207.
+  row=(data.ledger||[]).find(r=>{
+    const d=r.docNumbers||{};
+    const docs=[d.deal,d.taxInvoice,d.taxReceipt,d.receipt,r.invoiceNumber].map(v=>String(v||'').trim());
+    const who=[r.entity,r.responsible,r.project,r.projectName,r.notes].map(v=>String(v||'')).join(' ');
+    return who.includes('דנה') && docs.includes('30207');
+  });
+
+  if(row){
+    atlasMarkLastMovementV819(row);
+    return row;
+  }
+  return null;
+}
+function atlasMarkLastMovementV819(row){
+  if(!row) return;
+  const m={
+    ledgerId:row.id||'',
+    sourceProjectRowId:row._sourceProjectRowId||'',
+    sourceDetailRowId:row._sourceDetailRowId||'',
+    category:row.category||'',
+    markedAt:new Date().toISOString()
+  };
+  data._atlasLastMovementV819=m;
+  data._atlasLastMovementV818={...m};
+}
+function atlasIsLastMovementV819(r){
+  const target=atlasResolveLastMovementV819();
+  if(!target || !r) return false;
+  return String(target.id||'')===String(r.id||'');
+}
+function atlasMarkLastBySourceV819(opts={}){
+  const rows=data.ledger||[];
+  let target=null;
+  if(opts.sourceProjectRowId){
+    target=rows.find(r=>
+      String(r._sourceProjectRowId||'')===String(opts.sourceProjectRowId) &&
+      (!opts.category || String(r.category||'')===String(opts.category))
+    );
+  }
+  if(!target && opts.sourceDetailRowId){
+    target=rows.find(r=>
+      String(r._sourceDetailRowId||'')===String(opts.sourceDetailRowId) &&
+      (!opts.category || String(r.category||'')===String(opts.category))
+    );
+  }
+  if(target) atlasMarkLastMovementV819(target);
+}
+
+
+/* v820 — highlight rows in the MAIN ledger when Tax Invoice + Receipt is 000 */
+function atlasMainReceiptIs000V820(r){
+  if(!r) return false;
+
+  // v821 — test the SAME value that is actually rendered in the
+  // "חשבונית מס/קבלה" column of the main ledger.
+  let displayedTaxDoc='';
+  const d=r.docNumbers||{};
+
+  if(r._managedByContractorDetail){
+    const src=(data.contractorDetailRows?.[r._contractorId]||[])
+      .find(x=>String(x.id||'')===String(r._sourceDetailRowId||''));
+    if(src){
+      displayedTaxDoc = r.category==='contractorPayout'
+        ? String(src.contractorTaxReceipt||src.contractorInvoice||'')
+        : String(src.receiptInvoice||'');
+    }
+  }
+
+  if(!displayedTaxDoc){
+    displayedTaxDoc = r.category==='contractorPayout'
+      ? String(d.receipt||'')
+      : String(d.taxReceipt||'');
+  }
+
+  return displayedTaxDoc.trim()==='0';
+}
+
+
+/* v823 — final DOM-level enforcement for rows whose DISPLAYED tax-invoice/receipt is 000 */
+function atlasApplyReceipt000HighlightV823(){
+  const rows=document.querySelectorAll('#ledgerBody tr[data-key]');
+  rows.forEach(tr=>{
+    tr.classList.remove('atlasReceipt000RowV823');
+
+    // v837 — fully column-agnostic scan, AND force red text color directly on the
+    // matching cell/input (not just background), since background alone kept
+    // getting hidden by other row-coloring rules. Red bold text is much harder
+    // for any other CSS to accidentally cover.
+    const cells=tr.querySelectorAll(':scope > td');
+    let matchCell=null;
+    cells.forEach(cell=>{
+      const docInput = cell.querySelector('input, textarea, select');
+      const displayed = String(docInput ? (docInput.value ?? '') : (cell.textContent ?? '')).trim();
+      if(displayed==='0') matchCell=cell;
+    });
+    const is000 = !!matchCell;
+    if(is000){
+      tr.classList.add('atlasReceipt000RowV823');
+    }
+
+    cells.forEach(td=>{
+      if(is000){
+        td.style.setProperty('background-color','#fde8e8','important');
+      }else if(tr.classList.contains('atlasReceipt000RowV823')===false){
+        // do not erase normal row coloring; only remove our own inline override
+        if(td.dataset.atlasReceipt000V823==='1'){
+          td.style.removeProperty('background-color');
+          delete td.dataset.atlasReceipt000V823;
+        }
+      }
+      if(is000) td.dataset.atlasReceipt000V823='1';
+    });
+
+    if(matchCell){
+      const target = matchCell.querySelector('input, textarea, select') || matchCell;
+      target.style.setProperty('color','#c00000','important');
+      target.style.setProperty('-webkit-text-fill-color','#c00000','important');
+      target.style.setProperty('background-color','#ffe8e8','important');
+      target.style.setProperty('border','2px solid #e53935','important');
+      target.style.setProperty('font-weight','900','important');
+      target.style.setProperty('border-radius','6px','important');
+      target.dataset.atlasReceipt000TextV837='1';
+    } else {
+      cells.forEach(cell=>{
+        const target = cell.querySelector('input, textarea, select') || cell;
+        if(target.dataset && target.dataset.atlasReceipt000TextV837==='1'){
+          target.style.removeProperty('color');
+          target.style.removeProperty('-webkit-text-fill-color');
+          target.style.removeProperty('background-color');
+          target.style.removeProperty('border');
+          target.style.removeProperty('font-weight');
+          target.style.removeProperty('border-radius');
+          delete target.dataset.atlasReceipt000TextV837;
+        }
+      });
+    }
+
+    if(is000){
+      tr.style.setProperty('outline','2px solid rgba(220,38,38,.28)','important');
+      tr.style.setProperty('outline-offset','-2px','important');
+    }else{
+      tr.style.removeProperty('outline');
+      tr.style.removeProperty('outline-offset');
+    }
+  });
+}
+
 /* ============ LEDGER TABLE ============ */
 function inp(row, field, type, extra){
   extra = extra || '';
@@ -8809,7 +9214,11 @@ function moneyInp(row, field){
 }
 function docInp(row, key, ph){
   const val = (row.docNumbers && row.docNumbers[key]) || '';
-  return `<input type="text" placeholder="${ph}" data-id="${row.id}" data-doc="${key}" value="${val}">`;
+  const is000 = String(val||'').trim()==='0';
+  const style000 = is000
+    ? 'color:#c00000!important;-webkit-text-fill-color:#c00000!important;background:#ffe8e8!important;border:2px solid #e53935!important;font-weight:900!important;'
+    : '';
+  return `<input type="text" placeholder="${ph}" data-id="${row.id}" data-doc="${key}" value="${val}" style="${style000}">`;
 }
 function catSelect(row){
   let opts = '';
@@ -8819,6 +9228,7 @@ function catSelect(row){
 }
 
 function renderLedger(){
+  atlasResolveLastMovementV819();
   const sortedAll = computeBalances();
   renderDashboard(sortedAll);
   const monthRows = sortedAll.filter(r=> activeMonth==='ALL' ? true : rowMonth(r)===activeMonth);
@@ -8889,6 +9299,27 @@ function renderLedger(){
     const dateCells = sourceManaged
       ? `<td><span class="computed">${fmtDateIL(r.expectedDate||'')}</span></td><td><span class="computed">${fmtDateIL(r.submittedDate||'')}</span></td>`
       : `<td>${inp(r,'expectedDate','date')}</td><td>${inp(r,'submittedDate','date')}</td>`;
+    // v822 — calculate the exact Tax Invoice/Receipt value that this row will render.
+    // This is used directly for the red-light row marking, avoiding any mismatch
+    // between helper logic and the rendered document column.
+    let displayedTaxDocForRow='';
+    if(!isSimpleCat){
+      const dd=r.docNumbers||{};
+      displayedTaxDocForRow = r.category==='contractorPayout'
+        ? String(dd.receipt||'')
+        : String(dd.taxReceipt||'');
+      if(managedSupplier){
+        const src000=(data.contractorDetailRows?.[r._contractorId]||[])
+          .find(x=>String(x.id||'')===String(r._sourceDetailRowId||''));
+        if(src000){
+          displayedTaxDocForRow = r.category==='contractorPayout'
+            ? String(src000.contractorTaxReceipt||src000.contractorInvoice||'')
+            : String(src000.receiptInvoice||'');
+        }
+      }
+    }
+    const isReceipt000Row = displayedTaxDocForRow.trim()==='0';
+
     const docsCells = isSimpleCat
       ? `<td></td><td></td>`
       : (sourceManaged
@@ -8908,8 +9339,12 @@ function renderLedger(){
                     : String(src.receiptInvoice||'');
                 }
               }
+              const taxIs000 = String(taxDoc||'').trim()==='0';
+              const taxStyle000 = taxIs000
+                ? 'direction:ltr;display:inline-block;color:#c00000!important;-webkit-text-fill-color:#c00000!important;background:#ffe8e8!important;border:2px solid #e53935!important;border-radius:8px;padding:3px 10px;font-weight:900!important;'
+                : 'direction:ltr;display:inline-block;';
               return `<td><span class="computed" style="direction:ltr;display:inline-block;">${dealDoc}</span></td>` +
-                     `<td><span class="computed" style="direction:ltr;display:inline-block;">${taxDoc}</span></td>`;
+                     `<td><span class="computed" style="${taxStyle000}">${taxDoc}</span></td>`;
             })()
           : `<td>${docInp(r,'deal','ח.עסקה')}</td>` +
             `<td>${docInp(r,'taxReceipt','ח.מס')}</td>`);
@@ -8937,7 +9372,7 @@ function renderLedger(){
       || String(r.responsible||'').toLowerCase().includes('alon');
     const rowBg = isEmilRow ? '#eef8fc' : (isMaritRow ? '#d7f1ef' : (isYardenRow ? '#f3eefb' : (isRafaelRow ? '#f5f2e8' : (isErezRow ? '#edf7ef' : (isDimaRow ? '#eef3f8' : (isAlonRow ? '#f7f0e8' : '#ffffff'))))));
     return `
-    <tr class="cat-${r.category}${isSimpleCat?' rowCompact':''}${isEmilRow?' emilLedgerRow':''}${isMaritRow?' maritLedgerRow':''}${isYardenRow?' yardenLedgerRow':''}${isRafaelRow?' rafaelLedgerRow':''}${isErezRow?' erezLedgerRow':''}${isDimaRow?' dimaLedgerRow':''}${isAlonRow?' alonLedgerRow':''}" draggable="false" data-key="${unitKey(r)}" data-source-managed="${sourceManaged?'1':'0'}" style="${rowBg?`background:${rowBg};`:''}">
+    <tr class="cat-${r.category}${isSimpleCat?' rowCompact':''}${isEmilRow?' emilLedgerRow':''}${isMaritRow?' maritLedgerRow':''}${isYardenRow?' yardenLedgerRow':''}${isRafaelRow?' rafaelLedgerRow':''}${isErezRow?' erezLedgerRow':''}${isDimaRow?' dimaLedgerRow':''}${isAlonRow?' alonLedgerRow':''}${(atlasIsLastMovementV819(r)?' atlasLastMovementRow':'')+(isReceipt000Row?' atlasReceipt000Row':'')}" draggable="false" data-key="${unitKey(r)}" data-source-managed="${sourceManaged?'1':'0'}" style="${rowBg?`background:${rowBg};`:''}">
       <td class="dragHandle" title="גרור לשינוי סדר">⠿</td>
       <td><div class="serialNum">${idx+1}</div></td>
       <td class="${Number(r.income||0)>0 ? 'amountMiniCell' : ''}">
@@ -8961,6 +9396,8 @@ function renderLedger(){
       <td class="balCol">${balDisplay}</td>
     </tr>`;
   }).join('');
+  atlasApplyReceipt000HighlightV823();
+  requestAnimationFrame(atlasApplyReceipt000HighlightV823);
   attachDragHandlers();
   if(scrollAfterRender){
     scrollAfterRender = false;
@@ -9087,6 +9524,7 @@ function toggleLedgerPaidFromAmount(ledgerId, clickedEl){
 
   row.paid = !row.paid;
   const isPaid = !!row.paid;
+  if(isPaid) atlasMarkLastMovementV818(row);
 
   // Immediate UI feedback — no need to leave the sheet or wait for a re-render.
   const dot = clickedEl || document.querySelector(`.paymentDot[data-toggle-paid="${ledgerId}"]`);
@@ -9164,6 +9602,9 @@ document.addEventListener('change', e=>{
   }
 
   applyFieldFromInput(t, row);
+  if((t.dataset.field==='managedPaid' || t.dataset.field==='rowPaid' || t.dataset.field==='paid2') && row.paid){
+    atlasMarkLastMovementV818(row);
+  }
   if(t.dataset.field==='managedPaid') syncManagedPaymentStatusBackToDetail(row);
 
   if(t.dataset.field==='managedPaid' || t.dataset.field==='rowPaid'){
@@ -9183,6 +9624,9 @@ document.addEventListener('change', e=>{
     saveData();
     renderAll();
     return;
+  }
+  if(row.paid && (t.dataset.field==='paidDate' || t.dataset.field==='paymentDate' || t.dataset.doc)){
+    atlasMarkLastMovementV818(row);
   }
   if(row.category==='statutory' && t.dataset.field==='entity'){
     row.responsible = row.entity;
@@ -23515,19 +23959,32 @@ function atlasEnsureErezSupplierDocsV330(){
   const rows=data && data.contractorDetailRows && data.contractorDetailRows.erez;
   if(!Array.isArray(rows)) return false;
   let changed=false;
+
+  // v819: historical map is now BACKFILL ONLY.
+  // Never overwrite or clear values manually entered by the user.
   rows.forEach(r=>{
     const month=String(r.forMonth||r.workMonth||'').trim();
     const doc=ATLAS_EREZ_SUPPLIER_DOCS_V330[month];
+
     if(doc){
-      if(String(r.contractorInvoice||'').trim()!==doc.invoice){ r.contractorInvoice=doc.invoice; changed=true; }
-      if(String(r.contractorTaxReceipt||'').trim()!==doc.invoice){ r.contractorTaxReceipt=doc.invoice; changed=true; }
-      if(String(r.contractorPaidDate||'').trim()!==doc.date){ r.contractorPaidDate=doc.date; changed=true; }
-      if(r.emilPaid!==true){ r.emilPaid=true; changed=true; }
+      if(!String(r.contractorInvoice||'').trim()){
+        r.contractorInvoice=doc.invoice; changed=true;
+      }
+      if(!String(r.contractorTaxReceipt||'').trim()){
+        r.contractorTaxReceipt=doc.invoice; changed=true;
+      }
+      if(!String(r.contractorPaidDate||'').trim()){
+        r.contractorPaidDate=doc.date; changed=true;
+      }
+      if((String(r.contractorTaxReceipt||r.contractorInvoice||'').trim()) && r.emilPaid!==true){
+        r.emilPaid=true; changed=true;
+      }
     }else{
-      if(String(r.contractorInvoice||'').trim()){ r.contractorInvoice=''; changed=true; }
-      if(String(r.contractorTaxReceipt||'').trim()){ r.contractorTaxReceipt=''; changed=true; }
-      if(String(r.contractorPaidDate||'').trim()){ r.contractorPaidDate=''; changed=true; }
-      if(r.emilPaid!==false){ r.emilPaid=false; changed=true; }
+      // No canonical historical document: preserve manual user input.
+      const hasSupplierDoc=!!String(r.contractorTaxReceipt||r.contractorInvoice||'').trim();
+      if(hasSupplierDoc && r.emilPaid!==true){
+        r.emilPaid=true; changed=true;
+      }
     }
   });
   return changed;
@@ -25413,7 +25870,21 @@ function atlasCleanupPensionLayoutV354(){
       }
     });
 
-    dated.sort((a,b)=>String(a.ev.date).localeCompare(String(b.ev.date))||String(a.r.id||'').localeCompare(String(b.r.id||'')));
+    // v839 — when a contractor's "income received" and "payment made" rows share
+    // the same date, keep them adjacent instead of scattered among other same-day
+    // rows: group by clusterId (or contractor+source-row) before the id tie-break,
+    // and within a group put the income (contractorGross) row before the expense.
+    const cashGroupKeyV839=r=>{
+      if(r.clusterId) return String(r.clusterId);
+      if(r._contractorId && r._sourceDetailRowId) return String(r._contractorId)+'|'+String(r._sourceDetailRowId);
+      return String(r.id||'');
+    };
+    const cashCatRankV839=r=> r.category==='contractorGross' ? 0 : (r.category==='contractorPayout' ? 1 : 0.5);
+    dated.sort((a,b)=>
+      String(a.ev.date).localeCompare(String(b.ev.date)) ||
+      cashGroupKeyV839(a.r).localeCompare(cashGroupKeyV839(b.r)) ||
+      cashCatRankV839(a.r)-cashCatRankV839(b.r) ||
+      String(a.r.id||'').localeCompare(String(b.r.id||'')));
     undated.sort((a,b)=>{
       const ap=atlasDealOnlyPendingV711(a.r)?1:0;
       const bp=atlasDealOnlyPendingV711(b.r)?1:0;
@@ -25431,15 +25902,35 @@ function atlasCleanupPensionLayoutV354(){
       + undated.filter(x=>!atlasDealOnlyPendingV711(x.r)).reduce((s,x)=>s+(Number(x.r.expense)||0),0);
     const balanceToday=atlasCashBalanceTodayV608(all);
 
+    // v841 — find the last actual movement up to and including today, to show as
+    // a plain-language reminder at the top ("today our last movement is X").
+    const todayStrV841=(typeof todayLocalISO==='function' ? todayLocalISO() : todayISO());
+    let lastMovementDescV841='';
+    for(let mi=dated.length-1; mi>=0; mi--){
+      const mr=dated[mi].r, md=String(dated[mi].ev.date||'');
+      if(!md || md>todayStrV841) continue;
+      const mInc=Number(mr.income)||0, mExp=Number(mr.expense)||0;
+      const mWho=String(mr.responsible||mr.owner||mr.entity||mr.client||'').trim();
+      const mDateLabel=atlasFmtDateV606(md);
+      if(mExp>0) lastMovementDescV841 = `התנועה האחרונה שלנו (${mDateLabel}) — תשלום ל${mWho||'—'}`;
+      else if(mInc>0) lastMovementDescV841 = `התנועה האחרונה שלנו (${mDateLabel}) — קבלת תשלום מ${mWho||'—'}`;
+      else lastMovementDescV841 = `התנועה האחרונה שלנו (${mDateLabel}) — ${mWho||'—'}`;
+      break;
+    }
+
     let balance=opening;
     const makeDocs=r=>{const d=r.docNumbers||{}; return [d.deal||r.dealInvoice||'',d.taxInvoice||r.taxInvoice||'',d.taxReceipt||d.receipt||r.taxReceipt||r.receiptInvoice||''];};
 
     const linkButton=(num,nav,title,missingLabel)=>{
       if(!num) return '';
+      const is0 = String(num).trim()==='0';
+      const zeroStyle = is0
+        ? ' style="color:#c00000!important;background-color:#ffe8e8!important;border:2px solid #e53935!important;font-weight:900!important;"'
+        : '';
       if(!nav.kind){
-        return `<span class="atlasCashDocNoLinkV612" title="קיימת חשבונית אך לא נמצא קישור למקור">${esc(num)}</span>`;
+        return `<span class="atlasCashDocNoLinkV612${is0?' atlasZeroMarkerV838':''}"${zeroStyle} title="קיימת חשבונית אך לא נמצא קישור למקור">${esc(num)}</span>`;
       }
-      return `<button type="button" class="atlasCashDocBtnV609" data-nav-kind="${esc(nav.kind)}" data-nav-key="${esc(nav.key)}" data-nav-row="${esc(nav.rowId)}" data-nav-employee="${esc(nav.employee||'')}" title="${esc(title||'פתח מקור')}">${esc(num)}</button>`;
+      return `<button type="button" class="atlasCashDocBtnV609${is0?' atlasZeroMarkerV838':''}"${zeroStyle} data-nav-kind="${esc(nav.kind)}" data-nav-key="${esc(nav.key)}" data-nav-row="${esc(nav.rowId)}" data-nav-employee="${esc(nav.employee||'')}" title="${esc(title||'פתח מקור')}">${esc(num)}</button>`;
     };
 
     const nameButton=(label,nav)=>{
@@ -25448,6 +25939,15 @@ function atlasCleanupPensionLayoutV354(){
       return `<button type="button" class="atlasCashNameBtnV609" data-nav-kind="${esc(nav.kind)}" data-nav-key="${esc(nav.key)}" data-nav-row="${esc(nav.rowId)}" data-nav-employee="${esc(nav.employee||'')}">${esc(label)}</button>`;
     };
 
+    // v840 — deterministic pastel color per supplier (same supplier = same color
+    // always), plus a border frame around each matched income+payment pair.
+    const atlasSupplierColorV840=(key)=>{
+      const s=String(key||'');
+      if(!s) return '';
+      let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; }
+      const hue=h%360;
+      return `hsl(${hue},45%,96.5%)`;
+    };
     const rows=dated.map((x,i)=>{
       const r=x.r,inc=Number(r.income)||0,exp=Number(r.expense)||0;
       const balanceBefore=balance;
@@ -25476,7 +25976,28 @@ function atlasCleanupPensionLayoutV354(){
         : [];
       const groupedId=groupedKind ? `group_${groupedKind}_${groupedDate.replace(/[^0-9-]/g,'')}` : '';
 
-      const mainRow=`<tr data-cash-id="${esc(r.id||'')}" data-project-tab="${esc(r._projectTabId||'')}" data-project-row="${esc(r._sourceProjectRowId||'')}" data-contractor-id="${esc(r._contractorId||'')}" data-contractor-row="${esc(r._sourceDetailRowId||'')}" ${cardGroupId?`data-card-summary="${esc(cardGroupId)}"`:''}>
+      const rowIs0V838 = [deal,tax,tr].some(v=>String(v||'').trim()==='0');
+
+      // v840 — group framing: only frame rows that actually belong to a matched
+      // gross+payout pair (real clusterId or contractor+source-row), not every
+      // same-day row, so unrelated transactions aren't boxed together.
+      const groupKeyV840 = cashGroupKeyV839(r);
+      const hasRealGroupV840 = !!(r.clusterId || (r._contractorId && r._sourceDetailRowId));
+      const prevGroupV840 = i>0 ? cashGroupKeyV839(dated[i-1].r) : null;
+      const nextGroupV840 = i<dated.length-1 ? cashGroupKeyV839(dated[i+1].r) : null;
+      const isFirstInGroupV840 = hasRealGroupV840 && groupKeyV840!==prevGroupV840;
+      const isLastInGroupV840 = hasRealGroupV840 && groupKeyV840!==nextGroupV840;
+      const supplierColorV840 = hasRealGroupV840 ? atlasSupplierColorV840(r._contractorId||groupKeyV840) : '';
+      const groupBorderPartsV840 = [];
+      if(hasRealGroupV840){
+        groupBorderPartsV840.push('border-left:2px solid rgba(0,0,0,.18)!important;border-right:2px solid rgba(0,0,0,.18)!important;');
+        if(isFirstInGroupV840) groupBorderPartsV840.push('border-top:2px solid rgba(0,0,0,.28)!important;');
+        if(isLastInGroupV840) groupBorderPartsV840.push('border-bottom:2px solid rgba(0,0,0,.28)!important;');
+      }
+      const rowStyleV840 = rowIs0V838
+        ? ' style="background:#fde8e8!important;" class="atlasZeroRowV838"'
+        : (hasRealGroupV840 ? ` style="background:${supplierColorV840}!important;${groupBorderPartsV840.join('')}"` : '');
+      const mainRow=`<tr data-cash-id="${esc(r.id||'')}" data-project-tab="${esc(r._projectTabId||'')}" data-project-row="${esc(r._sourceProjectRowId||'')}" data-contractor-id="${esc(r._contractorId||'')}" data-contractor-row="${esc(r._sourceDetailRowId||'')}" ${cardGroupId?`data-card-summary="${esc(cardGroupId)}"`:''}${rowStyleV840}>
         <td>${i+1}</td>
         <td class="money atlasEditableCashV636" data-edit-field="income">${inc?money(inc):''}</td>
         <td class="money atlasEditableCashV636" data-edit-field="expense">${exp?money(exp):''}</td>
@@ -25493,9 +26014,18 @@ function atlasCleanupPensionLayoutV354(){
         <td class="money bal">${money(balanceAfter)}</td>
       </tr>`;
 
+      // v842 — insert a visual divider exactly where the table crosses from
+      // "already happened" (date <= today) into "expected/future" rows.
+      const thisDateV842=String(x.ev.date||'');
+      const prevDateV842=i>0 ? String(dated[i-1].ev.date||'') : '';
+      const crossesTodayV842 = i>0 && prevDateV842 && prevDateV842<=todayStrV841 && thisDateV842>todayStrV841;
+      const dividerV842 = crossesTodayV842
+        ? `<tr class="atlasTodayDividerV842"><td colspan="14">— טרם התקבל / צפי לעתיד —</td></tr>`
+        : '';
+
       const activeDetails=cardDetails.length?cardDetails:groupedDetails;
       const activeGroupId=cardDetails.length?cardGroupId:groupedId;
-      if(!activeDetails.length) return mainRow;
+      if(!activeDetails.length) return dividerV842+mainRow;
 
       // Expanded rows are pre-rendered in the SAME cash-flow table, hidden until arrow click.
       // Their balances are informational intermediate balances only; they do not affect cash twice.
@@ -25536,7 +26066,7 @@ function atlasCleanupPensionLayoutV354(){
         </tr>`;
       }).join('');
 
-      return mainRow+detailRows;
+      return dividerV842+mainRow+detailRows;
     }).join('');
 
     const noDate=undated.map((x,j)=>{
@@ -25633,22 +26163,6 @@ function atlasCleanupPensionLayoutV354(){
           <span>פיקדון בנקאי</span>
           <strong>${money(Number(ensureBankDepositV675().balance)||0)}</strong>
         </div>
-      </div>
-
-      <div class="atlasManualAddV622">
-        <select id="atlasManualTypeV622">
-          <option value="expense">הוצאה</option>
-          <option value="income">הכנסה</option>
-        </select>
-        <input id="atlasManualAmountV622" type="text" inputmode="decimal" placeholder="סכום">
-        <div class="atlasManualDateWrapV623">
-          <input id="atlasManualDateV622" type="text" inputmode="numeric" placeholder="01/01/2026">
-          <button type="button" id="atlasManualCalendarBtnV623" title="פתח לוח שנה">📅</button>
-        </div>
-        <input id="atlasManualClientV623" type="text" placeholder="לקוח (אופציונלי)">
-        <input id="atlasManualBodyV622" type="text" placeholder="גוף (אופציונלי)">
-        <input id="atlasManualDescV622" type="text" placeholder="תיאור / סוג, למשל עמלה">
-        <button type="button" id="atlasManualAddBtnV622">+ הוסף שורה</button>
       </div>
 
       <div class="atlasSimpleScroll603"><table class="atlasSimpleTable603"><thead><tr>
@@ -27747,16 +28261,7 @@ document.addEventListener('click',()=>{if(currentProjectTabKey==='agaf_tikshuv')
       `;
       const title='Atlas_Backup_'+new Date().toISOString().slice(0,10);
       w.document.open();
-      w.document.write('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>'+title+'</title><style>'+printCss+'</style></head><body>'+sections.map(x=>x.outerHTML).join('')+'
-<script id="atlasPaidDateMonthV816">
-/* v816 — paid rows are grouped by actual payment date in the main cash flow. */
-(function(){
-  try{ window.atlasEnsureHaderaIndependentRowsV815 && window.atlasEnsureHaderaIndependentRowsV815(); }catch(e){}
-  try{ window.ATLAS_VERSION='v816-paiddate-main-month'; }catch(e){}
-  try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
-})();
-</script>
-</body></html>');
+      w.document.write('<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>'+title+'</title><style>'+printCss+'</style></head><body>'+sections.map(x=>x.outerHTML).join('')+'</body></html>');
       w.document.close();
       w.focus();
       setTimeout(()=>{ try{ w.print(); }catch(e){ console.error(e); } },350);
