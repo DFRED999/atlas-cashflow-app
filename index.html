@@ -9872,7 +9872,7 @@ document.getElementById('saveBtn').addEventListener('click', function(){
 /* ===================================================================== הזדהות (Firebase Auth דרך REST)
    רק הכתובות שברשימה יכולות להיכנס ולגשת לנתונים. מה שחוסם בפועל
    הם כללי האבטחה במסד; המסך כאן מונע כניסה לאתר ושולח את האסימון. */
-const FB_API_KEY_DEFAULT = '';           /* ← מפתח ה-Web API של פרויקט atlas-cashflow */
+const FB_API_KEY_DEFAULT = 'AIzaSyDdmsCM-858-9lYPQ6bWNcl8Zsqi2XgNlU';           /* ← מפתח ה-Web API של פרויקט atlas-cashflow */
 const AUTH_ALLOW = ['denis@atlas-bd.co.il', 'bari@atlas-bd.co.il'];
 const AUTH = {idToken:'', refreshToken:'', email:'', expAt:0, skip:false, busy:false, err:'', slow:false, ready:false};
 function fbKey(){ let k=''; try{ k=localStorage.getItem('atlascf.key')||''; }catch(e){} return (k||FB_API_KEY_DEFAULT).trim(); }
