@@ -1661,6 +1661,30 @@ input[data-invoice-unlocked-v424="1"]{
 }
 #contractorNav{overflow-x:hidden !important;}
 
+
+/* ---- מסך כניסה ---- */
+#gate{position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#14213d 0%,#1f3160 55%,#0d1830 100%);display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;direction:rtl}
+#gate *{box-sizing:border-box}
+#gate .box{background:#fff;border-radius:18px;box-shadow:0 26px 70px rgba(0,0,0,.45);width:100%;max-width:430px;padding:30px 28px 24px;text-align:center;font-family:inherit}
+#gate .lg{font-size:32px;font-weight:800;letter-spacing:5px;color:#14213d;line-height:1}
+#gate .lg small{display:block;font-size:11px;letter-spacing:2px;color:#c9a227;font-weight:700;margin-top:4px}
+#gate .co{font-size:13px;font-weight:700;color:#14213d;margin-top:8px}
+#gate .ids{font-size:11px;color:#6b7385;margin-top:2px}
+#gate .sub{font-size:13px;color:#6b7385;margin:16px 0 14px;border-top:1px solid #dfe2ea;padding-top:14px}
+#gate .f{text-align:start;margin-bottom:10px}
+#gate .f label{display:block;font-size:12px;font-weight:600;color:#14213d;margin-bottom:3px}
+#gate .f input{width:100%;padding:10px 12px;border:1.5px solid #dfe2ea;border-radius:9px;font-size:15px;direction:ltr;font-family:inherit;background:#fff;color:#111}
+#gate .f input:focus{outline:0;border-color:#c9a227}
+#gate .go{width:100%;padding:11px;border:0;border-radius:9px;background:#14213d;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;font-family:inherit}
+#gate .go:hover{background:#1f3160}
+#gate .lnk{background:0;border:0;color:#6b7385;font-size:12px;cursor:pointer;text-decoration:underline;margin-top:12px;font-family:inherit}
+#gate .lnk:hover{color:#14213d}
+#gate .err{background:#fde8e8;color:#c62828;border-radius:9px;padding:9px 11px;font-size:12.5px;font-weight:600;margin-bottom:12px;text-align:start}
+#gate .wait{font-size:13px;color:#6b7385;padding:22px 0}
+#gate .spin{width:26px;height:26px;border:3px solid #d9d5f7;border-top-color:#14213d;border-radius:50%;margin:0 auto 10px;animation:gspin .9s linear infinite}
+@keyframes gspin{to{transform:rotate(360deg)}}
+#gate .setup{margin-top:14px;border-top:1px solid #dfe2ea;padding-top:12px;text-align:start}
+#gate .setup .hint{font-size:11.5px;color:#6b7385;line-height:1.6;margin-bottom:6px}
 </style>
 
 <style id="p211SizingFix">
@@ -9844,8 +9868,141 @@ document.getElementById('saveBtn').addEventListener('click', function(){
   URL.revokeObjectURL(url);
 });
 
+
+/* ===================================================================== הזדהות (Firebase Auth דרך REST)
+   רק הכתובות שברשימה יכולות להיכנס ולגשת לנתונים. מה שחוסם בפועל
+   הם כללי האבטחה במסד; המסך כאן מונע כניסה לאתר ושולח את האסימון. */
+const FB_API_KEY_DEFAULT = '';           /* ← מפתח ה-Web API של פרויקט atlas-cashflow */
+const AUTH_ALLOW = ['denis@atlas-bd.co.il', 'bari@atlas-bd.co.il'];
+const AUTH = {idToken:'', refreshToken:'', email:'', expAt:0, skip:false, busy:false, err:'', slow:false, ready:false};
+function fbKey(){ let k=''; try{ k=localStorage.getItem('atlascf.key')||''; }catch(e){} return (k||FB_API_KEY_DEFAULT).trim(); }
+function authAllowed(em){ const e=String(em||'').toLowerCase(); return !AUTH_ALLOW.length || AUTH_ALLOW.some(x=>x.toLowerCase()===e); }
+function authSave(){ try{ localStorage.setItem('atlascf.auth', JSON.stringify({r:AUTH.refreshToken, e:AUTH.email})); }catch(e){} }
+function authClear(){ AUTH.idToken=''; AUTH.refreshToken=''; AUTH.expAt=0; try{ localStorage.removeItem('atlascf.auth'); }catch(e){} }
+function authNeeded(){ return !AUTH.idToken && !AUTH.skip; }
+function authQS(){ return AUTH.idToken ? '&auth='+encodeURIComponent(AUTH.idToken) : ''; }
+function authErrText(code){
+  const c=String(code||'');
+  if(/EMAIL_NOT_FOUND|INVALID_PASSWORD|INVALID_LOGIN_CREDENTIALS/i.test(c)) return 'אימייל או סיסמה שגויים';
+  if(/USER_DISABLED/i.test(c)) return 'המשתמש חסום';
+  if(/TOO_MANY_ATTEMPTS/i.test(c)) return 'יותר מדי ניסיונות – נסה שוב בעוד כמה דקות';
+  if(/MISSING_PASSWORD|MISSING_EMAIL/i.test(c)) return 'יש להזין אימייל וסיסמה';
+  if(/API key not valid|INVALID_API_KEY|API_KEY/i.test(c)) return 'מפתח ה-API של הפרויקט שגוי';
+  if(/OPERATION_NOT_ALLOWED/i.test(c)) return 'כניסה עם אימייל וסיסמה לא הופעלה בפרויקט';
+  if(/Failed to fetch|NetworkError/i.test(c)) return 'אין חיבור לרשת';
+  return c || 'ההתחברות נכשלה';
+}
+async function authPost(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((j.error && j.error.message) || ('HTTP '+r.status));
+  return j;
+}
+async function authSignIn(email, pw){
+  if(!fbKey()) throw new Error('API_KEY');
+  const j = await authPost('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(fbKey()),
+    {email:email, password:pw, returnSecureToken:true});
+  if(!authAllowed(j.email)) throw new Error('NOT_ALLOWED:'+j.email);
+  AUTH.idToken=j.idToken; AUTH.refreshToken=j.refreshToken; AUTH.email=j.email;
+  AUTH.expAt=Date.now()+(Number(j.expiresIn||3600)-120)*1000;
+  authSave();
+}
+async function authRefresh(){
+  if(!AUTH.refreshToken || !fbKey()) return false;
+  try{
+    const r = await fetch('https://securetoken.googleapis.com/v1/token?key='+encodeURIComponent(fbKey()),
+      {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+       body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(AUTH.refreshToken)});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok || !j.id_token){ authClear(); return false; }
+    AUTH.idToken=j.id_token; AUTH.refreshToken=j.refresh_token||AUTH.refreshToken;
+    AUTH.expAt=Date.now()+(Number(j.expires_in||3600)-120)*1000;
+    authSave(); return true;
+  }catch(e){ return false; }
+}
+async function authEnsure(){ if(AUTH.idToken && Date.now()<AUTH.expAt) return true; return await authRefresh(); }
+async function authInit(){
+  let saved=null;
+  try{ saved=JSON.parse(localStorage.getItem('atlascf.auth')||'null'); }catch(e){}
+  if(saved && saved.r){ AUTH.refreshToken=saved.r; AUTH.email=saved.e||''; AUTH.busy=true; gateRender(); await authRefresh(); AUTH.busy=false; }
+  AUTH.ready=true; gateRender();
+}
+function authSignOut(){ authClear(); AUTH.skip=false; AUTH.err=''; gateRender(); }
+async function fbDenied(){
+  if(await authRefresh()) return;
+  authClear(); AUTH.err='פג תוקף ההתחברות – יש להיכנס מחדש'; gateRender();
+}
+/* ---------- מסך הכניסה ---------- */
+function gateRender(){
+  const need = authNeeded();
+  let el = document.getElementById('gate');
+  if(!need){ if(el) el.remove(); return; }
+  if(!el){
+    el=document.createElement('div'); el.id='gate'; document.body.appendChild(el);
+    el.addEventListener('click', gateClick);
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.tagName==='INPUT'){ e.preventDefault(); gateIn(); } });
+    setTimeout(()=>{ if(document.getElementById('gate') && !AUTH.idToken){ AUTH.slow=true; gateRender(); } }, 8000);
+  }
+  const E = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const head = '<div class="lg">ATLAS<small>תזרים מזומנים</small></div><div class="co">ב.ד. אטלס הנדסה וניהול פרויקטים</div>'+
+    '<div class="ids">ח.פ. 516797214 · מספר ספק (מ.ס.) 11027652</div>';
+  if(AUTH.busy || !AUTH.ready){ el.innerHTML='<div class="box">'+head+'<div class="wait"><div class="spin"></div>מתחבר…</div></div>'; return; }
+  let h='<div class="box">'+head+'<div class="sub">הזדהות נדרשת לכניסה למערכת</div>';
+  if(AUTH.err) h+='<div class="err">'+E(AUTH.err)+'</div>';
+  h+='<div class="f"><label for="gEmail">אימייל</label><input id="gEmail" type="email" dir="ltr" autocomplete="username" value="'+E(AUTH.email||AUTH_ALLOW[0]||'')+'"></div>'+
+     '<div class="f"><label for="gPw">סיסמה</label><input id="gPw" type="password" dir="ltr" autocomplete="current-password"></div>'+
+     '<button class="go" data-g="in">כניסה</button>'+
+     '<button class="lnk" data-g="reset">שכחתי סיסמה</button>';
+  if(!fbKey()){
+    h+='<div class="setup"><div class="hint">הגדרה חד-פעמית: נדרש מפתח ה-Web API של הפרויקט.<br>Firebase Console → ⚙ Project settings → General → <b dir="ltr">Web API Key</b></div>'+
+       '<div class="f"><input id="gKey" dir="ltr" placeholder="AIzaSy…"></div><button class="go" data-g="key">שמירת המפתח</button></div>';
+  }
+  if(AUTH.slow) h+='<div class="setup"><button class="lnk" data-g="local">אין חיבור לענן – המשך לעבודה מקומית בלבד</button></div>';
+  el.innerHTML = h+'</div>';
+  const f=document.getElementById('gPw'); if(f) setTimeout(()=>f.focus(),30);
+}
+async function gateIn(){
+  const em=(document.getElementById('gEmail')||{}).value||'', pw=(document.getElementById('gPw')||{}).value||'';
+  AUTH.email=em.trim();
+  if(!AUTH.email || !pw){ AUTH.err='יש להזין אימייל וסיסמה'; gateRender(); return; }
+  AUTH.err=''; AUTH.busy=true; gateRender();
+  try{
+    await authSignIn(AUTH.email, pw);
+    AUTH.busy=false; gateRender();
+    firebaseAutoLoad(true);
+  }catch(e){
+    AUTH.busy=false;
+    const m=String(e.message||'');
+    AUTH.err = m.indexOf('NOT_ALLOWED:')===0 ? ('הכתובת '+m.slice(12)+' אינה מורשית לגשת למערכת') : authErrText(m);
+    gateRender();
+  }
+}
+function gateClick(e){
+  const b=e.target.closest('[data-g]'); if(!b) return;
+  e.preventDefault();
+  const k=b.dataset.g;
+  if(k==='in') return gateIn();
+  if(k==='local'){ AUTH.skip=true; gateRender(); return; }
+  if(k==='key'){
+    const v=((document.getElementById('gKey')||{}).value||'').trim();
+    if(!v){ AUTH.err='יש להזין מפתח'; return gateRender(); }
+    try{ localStorage.setItem('atlascf.key', v); }catch(e2){}
+    AUTH.err=''; gateRender(); return;
+  }
+  if(k==='reset'){
+    const em=((document.getElementById('gEmail')||{}).value||'').trim();
+    if(!em){ AUTH.err='יש להזין קודם את כתובת האימייל'; return gateRender(); }
+    if(!fbKey()){ AUTH.err='חסר מפתח ה-API של הפרויקט'; return gateRender(); }
+    AUTH.busy=true; gateRender();
+    authPost('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key='+encodeURIComponent(fbKey()),
+      {requestType:'PASSWORD_RESET', email:em})
+      .then(()=>{ AUTH.busy=false; AUTH.err=''; gateRender(); setGhStatus('נשלח מייל לאיפוס סיסמה אל '+em); })
+      .catch(err=>{ AUTH.busy=false; AUTH.err=authErrText(err.message); gateRender(); });
+  }
+}
+
 /* ============ FIREBASE SYNC ============ */
-// Fully open Realtime Database — no auth/token needed for read or write.
+// הגישה למסד מחייבת התחברות: כל פנייה נושאת אסימון, והכללים בשרת מתירים רק את הכתובות שברשימה.
 const FIREBASE_URL = 'https://atlas-cashflow-3b7aa-default-rtdb.europe-west1.firebasedatabase.app';
 const FIREBASE_NODE = 'atlasCashflow';
 
@@ -9896,7 +10053,9 @@ function atlasMergeOfekHistoricalRowsV297(){
 async function firebaseAutoLoad(showStatus){
   if(showStatus) setGhStatus('טוען נתונים...');
   try{
-    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json?_=${Date.now()}`);
+    await authEnsure();
+    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json?_=${Date.now()}${authQS()}`);
+    if(res.status===401 || res.status===403){ await fbDenied(); throw new Error('אין הרשאה – יש להתחבר מחדש'); }
     if(!res.ok) throw new Error('שגיאה '+res.status);
     const parsed = await res.json();
     if(parsed===null){
@@ -9951,13 +10110,16 @@ async function firebaseAutoLoad(showStatus){
 }
 
 async function firebaseSave(){
+  if(authNeeded()){ setGhStatus('לא מחובר – השינויים נשמרו במכשיר בלבד', true); return; }
   setGhStatus('שומר...');
   try{
-    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json`, {
+    await authEnsure();
+    const res = await fetch(`${FIREBASE_URL}/${FIREBASE_NODE}.json?x=1${authQS()}`, {
       method:'PUT',
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify(data)
     });
+    if(res.status===401 || res.status===403){ await fbDenied(); throw new Error('אין הרשאה – יש להתחבר מחדש'); }
     if(!res.ok) throw new Error('שגיאה '+res.status);
     setGhStatus('נשמר בהצלחה לכולם ('+new Date().toLocaleTimeString('he-IL')+')');
   }catch(err){ setGhStatus('שגיאה בשמירה: '+err.message, true); }
@@ -9965,6 +10127,15 @@ async function firebaseSave(){
 
 document.getElementById('ghRefreshBtn').addEventListener('click', ()=>firebaseAutoLoad(true));
 document.getElementById('ghSaveBtn').addEventListener('click', firebaseSave);
+(function addSignOutBtn(){
+  const ref = document.getElementById('ghRefreshBtn'); if(!ref || !ref.parentNode) return;
+  const b = document.createElement('button');
+  b.id = 'ghSignOutBtn'; b.textContent = 'התנתקות';
+  b.className = ref.className;
+  b.title = 'יציאה מהמערכת';
+  b.addEventListener('click', authSignOut);
+  ref.parentNode.insertBefore(b, ref.nextSibling);
+})();
 
 /* ============ COLUMN FILTERS (Excel-style) ============ */
 // columnFilters[col] is either null (no filter / show all) or a Set of allowed values.
@@ -22423,7 +22594,7 @@ ensureImportedDealInvoiceDatesV234();
   ensureShayLiLocalPayslipLinksV258();
   ensureAllLocalPayslipLinksV260();
   renderAll();
-firebaseAutoLoad(false);
+if(!authNeeded()) firebaseAutoLoad(false);
 </script>
 <script>
 if(!window.__p211HideColumnsObserver){
@@ -30526,5 +30697,19 @@ function atlasEnsureMaritRow4V872(){
 })();
 </script>
 
+<script>
+/* הפעלת ההזדהות – בלוק נפרד בכוונה, כדי שתמיד ירוץ */
+(function(){
+  function go(){
+    try{
+      gateRender();
+      authInit().then(function(){
+        if(!authNeeded() && typeof firebaseAutoLoad === 'function'){ try{ firebaseAutoLoad(false); }catch(e){} }
+      });
+    }catch(e){ console.warn('auth init', e); }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+})();
+</script>
 </body>
 </html>
